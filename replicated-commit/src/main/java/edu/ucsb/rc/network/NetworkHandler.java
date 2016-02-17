@@ -6,7 +6,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
-import edu.ucsb.rc.Client;
+import edu.ucsb.rc.TransactionClient;
 import edu.ucsb.rc.Message;
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.Shard;
@@ -64,7 +64,7 @@ public class NetworkHandler {
 		}
 	}
 	
-	public void sendMessageToClient(Client client, Message message) {
+	public void sendMessageToClient(TransactionClient client, Message message) {
 		// Send a message to a client
 		InetAddress clientAddress;
 		

@@ -1,15 +1,18 @@
 package edu.ucsb.rc;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class MultiDatacenter {
 	private static MultiDatacenter _instance;
 	private ArrayList<Datacenter> datacenters;
 	private Datacenter currentDatacenter;
 	private Shard currentShard;
+	private HashMap<String, TransactionClient> transactionClientsMap;
 	
 	private MultiDatacenter() {
 		this.datacenters = new ArrayList<Datacenter>();
+		this.transactionClientsMap = new HashMap<String, TransactionClient>();
 	}
 	
 	public static MultiDatacenter getInstance() {
@@ -45,5 +48,18 @@ public class MultiDatacenter {
 	
 	public Shard getCurrentShard() {
 		return this.currentShard;
+	}
+	
+	public void addTransactionClient(TransactionClient tc) {
+		this.transactionClientsMap.put(tc.getServerSideTransactionID(), tc);
+	}
+	
+	public boolean containsTransactionClient(String serverSideTransactionId) {
+		return this.transactionClientsMap.containsKey(serverSideTransactionId);
+	}
+	
+	public TransactionClient getTransactionClient(String serverSideTransactionId) {
+		return this.transactionClientsMap.containsKey(serverSideTransactionId) ? 
+				this.transactionClientsMap.get(serverSideTransactionId) : null;
 	}
 }
