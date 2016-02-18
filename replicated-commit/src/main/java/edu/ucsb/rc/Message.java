@@ -70,4 +70,12 @@ public class Message implements Serializable {
 	public void setMessageType(MessageType messageType) {
 		this.messageType = messageType;
 	}
+
+	public long getTransactionID() {
+		return transactionID;
+	}
+
+	public void setTransactionID(long transactionID) {
+		this.transactionID = transactionID;
+	}
 }

@@ -3,7 +3,13 @@ package edu.ucsb.rc;
 public class TransactionClient {
 	private String ipAddress;
 	private int port;
-	private int transactionID;
+	private long transactionID;
+	
+	public TransactionClient(String clientIpAddress, int clientPort, long transactionIdDefinedByClient) {
+		this.ipAddress = clientIpAddress;
+		this.port = clientPort;
+		this.transactionID = transactionIdDefinedByClient;
+	}
 
 	public String getIpAddress() {
 		return ipAddress;
@@ -21,11 +27,11 @@ public class TransactionClient {
 		this.port = port;
 	} 
 
-	public void setTransactionIdDefinedByClient(int transactionID) {
+	public void setTransactionIdDefinedByClient(long transactionID) {
 		this.transactionID = transactionID;
 	}
 	
-	public int getTransactionIdDefinedByClient() {
+	public long getTransactionIdDefinedByClient() {
 		return this.transactionID;
 	}
 	
@@ -33,7 +39,7 @@ public class TransactionClient {
 		return buildServerSideTransactionID(this.ipAddress, this.port, this.transactionID);
 	}
 	
-	public static String buildServerSideTransactionID(String ip, int port, int transactionID) {
+	public static String buildServerSideTransactionID(String ip, int port, long transactionID) {
 		return ip + "/" + port + "/" + transactionID;
 	}
 }

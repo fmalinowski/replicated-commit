@@ -28,4 +28,12 @@ public class Shard {
 	public void setDatacenter(Datacenter datacenter) {
 		this.datacenter = datacenter;
 	}
+	
+	public void handleReadRequestFromClient(TransactionClient tc, Message message) {
+		// Handle a read request coming from a client
+	}
+	
+	public void handlePaxosAcceptRequest(TransactionClient tc, Message message) {
+		// Handle a PAXOS Accept request coming from client
+	}
 }
