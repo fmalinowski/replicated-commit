@@ -7,12 +7,44 @@
   <version>1.0-SNAPSHOT</version>
   <name>replicated-commit</name>
   <url>http://maven.apache.org</url>
+  
   <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>3.8.1</version>
-      <scope>test</scope>
-    </dependency>
+	<dependency>
+		<groupId>junit</groupId>
+		<artifactId>junit</artifactId>
+		<version>4.11</version>
+		<scope>test</scope>
+	</dependency>
+	
+	<dependency>
+		<groupId>org.powermock</groupId>
+		<artifactId>powermock-module-junit4</artifactId>
+		<version>1.6.4</version>
+	</dependency>
   </dependencies>
+  
+  <!-- This is to generate JAR with dependencies -->
+    <build>
+  		<plugins>
+    		<plugin>
+      			<artifactId>maven-assembly-plugin</artifactId>
+      			<configuration>
+        			<descriptorRefs>
+          				<descriptorRef>jar-with-dependencies</descriptorRef>
+        			</descriptorRefs>
+      			</configuration>
+      			
+      			<!-- This to generate the JAR with dependencies also during the package phase -->
+      			<executions>
+    				<execution>
+      					<id>make-assembly</id>
+      					<phase>package</phase>
+      					<goals>
+        					<goal>single</goal>
+      					</goals>
+    				</execution>
+  				</executions>
+    		</plugin>
+  		</plugins>
+	</build>
 </project>

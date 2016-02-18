@@ -1,13 +1,33 @@
 package edu.ucsb.rc;
 
-/**
- * Hello world!
- *
- */
-public class App 
-{
-    public static void main( String[] args )
-    {
-        System.out.println( "Hello World!" );
-    }
+import java.util.logging.Logger;
+
+import edu.ucsb.rc.network.NetworkHandler;
+
+public class App {
+	private final static Logger LOGGER = Logger.getLogger(App.class.getName()); 
+	private final static String configFilePath = "./config.properties";
+	
+    public static void main(String[] args) {
+    	ConfigReader configReader;
+        MultiDatacenter multiDatacenter;
+        NetworkHandler networkHandler;
+        int shardListeningPort, clientListeningPort, listeningPortOnClientSide;
+        
+        configReader = new ConfigReader(configFilePath);
+        shardListeningPort = configReader.getShardListeningPort();
+        clientListeningPort = configReader.getClientListeningPort();
+        listeningPortOnClientSide = configReader.getListeningPortOnClientSide();
+        multiDatacenter = configReader.initializeMultiDatacenter();
+        
+        networkHandler = new NetworkHandler(multiDatacenter, clientListeningPort, 
+        		shardListeningPort, listeningPortOnClientSide);
+        
+        LOGGER.info("Listening for shard messages");
+        networkHandler.listenForShards();
+        LOGGER.info("Listening for client messages");
+        networkHandler.listenForClients();
+        
+        while (true);
+	}
 }
