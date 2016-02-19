@@ -66,7 +66,7 @@ public class Message implements Serializable {
 	}
 
 	public MessageType getMessageType() {
-		return messageType;
+		return this.messageType;
 	}
 
 	public void setMessageType(MessageType messageType) {
@@ -74,7 +74,7 @@ public class Message implements Serializable {
 	}
 
 	public Transaction getTransaction() {
-		return transaction;
+		return this.transaction;
 	}
 
 	public void setTransaction(Transaction transaction) {
