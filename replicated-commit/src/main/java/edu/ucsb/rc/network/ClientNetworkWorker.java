@@ -34,7 +34,7 @@ public class ClientNetworkWorker implements Runnable {
 		}
 	}
 	
-	public void setServerTransactionId(DatagramPacket packet, Transaction transaction) {		
+	private void setServerTransactionId(DatagramPacket packet, Transaction transaction) {		
 		String clientIpAddress = packet.getAddress().getHostAddress();
 		int clientPort = packet.getPort();
 		long clientTransactionId = transaction.getTransactionIdDefinedByClient();

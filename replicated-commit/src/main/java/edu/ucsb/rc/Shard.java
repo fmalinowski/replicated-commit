@@ -55,15 +55,15 @@ public class Shard {
 		// TODO
 	}
 	
-	private void addTransaction(Transaction t) {
+	public void addTransaction(Transaction t) {
 		this.transactionsMap.put(t.getServerTransactionId(), t);
 	}
 	
-	private boolean containsTransaction(String serverTransactionId) {
+	public boolean containsTransaction(String serverTransactionId) {
 		return this.transactionsMap.containsKey(serverTransactionId);
 	}
 	
-	private Transaction getTransaction(String serverTransactionId) {
+	public Transaction getTransaction(String serverTransactionId) {
 		return this.transactionsMap.containsKey(serverTransactionId) ? 
 				this.transactionsMap.get(serverTransactionId) : null;
 	}
