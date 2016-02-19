@@ -1,8 +1,11 @@
 package edu.ucsb.rc;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import edu.ucsb.rc.locks.LocksManager;
+import edu.ucsb.rc.network.NetworkHandler;
+import edu.ucsb.rc.transactions.Operation;
 import edu.ucsb.rc.transactions.Transaction;
 
 public class Shard {
@@ -44,7 +47,39 @@ public class Shard {
 	public void handleReadRequestFromClient(Transaction t) {
 		// Handle a read request coming from a client
 		this.addTransaction(t);
-		// TODO
+		
+		ArrayList<Operation> readSet = t.getReadSet();
+		boolean allSharedLocksAcquired = true;
+		NetworkHandler networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
+		Message messageForClient = new Message();
+		
+		for (Operation op : readSet) {
+			if (this.operationKeyBelongsToCurrentChard(op)) {
+				if (allSharedLocksAcquired = this.locksManager.addSharedLock(op.getKey(), t.getServerTransactionId())) {
+					// read value of key in datastore
+					Datastore.getInstance().read(op.getKey(), op.getColumnValues());
+				} else {
+					break;
+				}
+			}
+		}
+		
+		if (allSharedLocksAcquired) {
+			messageForClient.setMessageType(Message.MessageType.READ_ANSWER);
+		} else {
+			// We remove all locks and remnove the transaction from the current transactions
+			// (the transaction is aborted)
+			for (Operation op : readSet) {
+				if (this.operationKeyBelongsToCurrentChard(op)) {
+					this.locksManager.removeLock(op.getKey(), t.getServerTransactionId());
+				}
+			}
+			this.removeTransaction(t);
+			messageForClient.setMessageType(Message.MessageType.READ_FAILED);
+		}
+		
+		messageForClient.setTransaction(t);
+		networkHandler.sendMessageToClient(t, messageForClient);
 	}
 	
 	public void handlePaxosAcceptRequest(Transaction t) {
@@ -66,5 +101,15 @@ public class Shard {
 	public Transaction getTransaction(String serverTransactionId) {
 		return this.transactionsMap.containsKey(serverTransactionId) ? 
 				this.transactionsMap.get(serverTransactionId) : null;
+	}
+	
+	public void removeTransaction(Transaction t) {
+		if (this.containsTransaction(t.getServerTransactionId())) {
+			this.transactionsMap.remove(t.getServerTransactionId());
+		}
+	}
+	
+	public boolean operationKeyBelongsToCurrentChard(Operation op) {
+		return this.datacenter.getShardIdForKey(op.getKey()) == this.shardID;
 	}
 }

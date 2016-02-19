@@ -30,4 +30,8 @@ public class Datacenter {
 	public void setDatacenterID(int datacenterID) {
 		this.datacenterID = datacenterID;
 	}
+	
+	public int getShardIdForKey(String key) {
+		return key.hashCode() % 3;
+	}
 }

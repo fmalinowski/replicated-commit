@@ -2,11 +2,14 @@ package edu.ucsb.rc;
 
 import java.util.ArrayList;
 
+import edu.ucsb.rc.network.NetworkHandler;
+
 public class MultiDatacenter {
 	private static MultiDatacenter _instance;
 	private ArrayList<Datacenter> datacenters;
 	private Datacenter currentDatacenter;
 	private Shard currentShard;
+	private NetworkHandler networkHandler;
 	
 	private MultiDatacenter() {
 		this.datacenters = new ArrayList<Datacenter>();
@@ -45,5 +48,13 @@ public class MultiDatacenter {
 	
 	public Shard getCurrentShard() {
 		return this.currentShard;
+	}
+	
+	public NetworkHandler getNetworkHandler() {
+		return this.networkHandler;
+	}
+	
+	public void setNetworkHandler(NetworkHandler networkHandler) {
+		this.networkHandler = networkHandler;
 	}
 }
