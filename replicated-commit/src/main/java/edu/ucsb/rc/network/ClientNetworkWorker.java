@@ -1,19 +1,15 @@
 package edu.ucsb.rc.network;
 
-import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 
 import edu.ucsb.rc.Message;
 import edu.ucsb.rc.MultiDatacenter;
-import edu.ucsb.rc.TransactionClient;
+import edu.ucsb.rc.transactions.Transaction;
 
 public class ClientNetworkWorker implements Runnable {
-	private DatagramSocket serverSocket = null;
 	private DatagramPacket packet;
 	
-	public ClientNetworkWorker(DatagramSocket serverSocket, DatagramPacket packet) {
-		this.serverSocket = serverSocket;
+	public ClientNetworkWorker(DatagramPacket packet) {
 		this.packet = packet;
 	}
 
@@ -25,32 +21,24 @@ public class ClientNetworkWorker implements Runnable {
 		messageFromClient = Message.deserialize(receivedBytes);
 		
 		// We handle the message received from the client here  
-		TransactionClient transactionClient = getOrAddTransactionClientToMultiDatacenter(this.packet, messageFromClient);
 		MultiDatacenter multiDatacenter = MultiDatacenter.getInstance();
 		
+		Transaction transaction = messageFromClient.getTransaction();
+		setServerTransactionId(this.packet, transaction);
+		
 		if (messageFromClient.getMessageType() == Message.MessageType.READ_REQUEST) {
-			multiDatacenter.getCurrentShard().handleReadRequestFromClient(transactionClient, messageFromClient);
+			multiDatacenter.getCurrentShard().handleReadRequestFromClient(transaction);
 		}
 		if (messageFromClient.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST) {
-			multiDatacenter.getCurrentShard().handlePaxosAcceptRequest(transactionClient, messageFromClient);
+			multiDatacenter.getCurrentShard().handlePaxosAcceptRequest(transaction);
 		}
 	}
 	
-	public TransactionClient getOrAddTransactionClientToMultiDatacenter(DatagramPacket packet, Message message) {
-		MultiDatacenter multiDatacenter = MultiDatacenter.getInstance();
-		
+	public void setServerTransactionId(DatagramPacket packet, Transaction transaction) {		
 		String clientIpAddress = packet.getAddress().getHostAddress();
 		int clientPort = packet.getPort();
-		long transactionIdDefinedByClient = message.getTransactionID();
+		long clientTransactionId = transaction.getTransactionIdDefinedByClient();
 		
-		String serverSideTransactionId = TransactionClient.buildServerSideTransactionID(clientIpAddress, clientPort, transactionIdDefinedByClient);
-		
-		if (multiDatacenter.containsTransactionClient(serverSideTransactionId)) {
-			return multiDatacenter.getTransactionClient(serverSideTransactionId);
-		} else {
-			TransactionClient tc = new TransactionClient(clientIpAddress, clientPort, transactionIdDefinedByClient);
-			multiDatacenter.addTransactionClient(tc);
-			return tc;
-		}
+		transaction.setServerTransactionId(clientIpAddress, clientPort, clientTransactionId);
 	}
 }

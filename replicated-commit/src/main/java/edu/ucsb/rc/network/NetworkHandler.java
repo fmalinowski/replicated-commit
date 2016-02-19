@@ -3,28 +3,21 @@ package edu.ucsb.rc.network;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 
-import edu.ucsb.rc.TransactionClient;
 import edu.ucsb.rc.Message;
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.Shard;
+import edu.ucsb.rc.transactions.Transaction;
 
 public class NetworkHandler {
-	private MultiDatacenter multiDatacenter;
-	private int clientsPort, shardsPort, portOnClientSide;
+	private int shardsPort;
 	private ShardsNetworkListener shardsNetworkListener;
 	private ClientsNetworkListener clientsNetworkListener;
 	private DatagramSocket socketForClients;
 	private DatagramSocket socketForShards;
-	private DatagramSocket socketToSendMessages;
 
-	public NetworkHandler(MultiDatacenter multiDatacenter, int clientsPort, int shardsPort, int portOnClientSide) {
-		this.multiDatacenter = multiDatacenter;
-		this.clientsPort = clientsPort;
+	public NetworkHandler(MultiDatacenter multiDatacenter, int clientsPort, int shardsPort) {
 		this.shardsPort = shardsPort;
-		this.portOnClientSide = portOnClientSide;
 		
 		try {
 			this.socketForShards = new DatagramSocket(shardsPort);
@@ -64,16 +57,16 @@ public class NetworkHandler {
 		}
 	}
 	
-	public void sendMessageToClient(TransactionClient client, Message message) {
+	public void sendMessageToClient(Transaction transaction, Message message) {
 		// Send a message to a client
 		InetAddress clientAddress;
 		
 		try {
-			clientAddress = InetAddress.getByName(client.getIpAddress());
+			clientAddress = InetAddress.getByName(transaction.getClientIpAddress());
 			byte[] bytesToSend = message.serialize();
 		
 			DatagramPacket sendPacket = new DatagramPacket(bytesToSend, bytesToSend.length, 
-				clientAddress, this.portOnClientSide);
+				clientAddress, transaction.getClientPort());
 		
 			this.socketForClients.send(sendPacket);
 		} catch (Exception e) {

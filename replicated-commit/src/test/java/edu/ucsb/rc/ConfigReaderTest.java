@@ -32,14 +32,6 @@ public class ConfigReaderTest {
 		
 		assertEquals(50001, configReader.getClientListeningPort());
 	}
-	
-	@Test
-	public void testGetlisteningPortOnClientSide() {
-		ConfigReader configReader;
-		configReader = new ConfigReader("config-unit-test.properties");
-		
-		assertEquals(50002, configReader.getListeningPortOnClientSide());
-	}
 
 	@Test
 	public void testInitializeMultiDatacenter() {

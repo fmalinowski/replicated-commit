@@ -8,6 +8,8 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
+import edu.ucsb.rc.transactions.Transaction;
+
 public class Message implements Serializable {
 	private static final long serialVersionUID = -2505050279340559507L;
 	
@@ -22,7 +24,7 @@ public class Message implements Serializable {
 	}
 	
 	private MessageType messageType;
-	private long transactionID; // This field is chosen by the client. We can differentiate different transactions on a shard with that ID and the socket info of the client
+	private Transaction transaction;
 	
 	// We will use this class to send messages over the network for clients and shards
 	// All the objects that are contained in this class and that we want to send over the network
@@ -71,11 +73,11 @@ public class Message implements Serializable {
 		this.messageType = messageType;
 	}
 
-	public long getTransactionID() {
-		return transactionID;
+	public Transaction getTransaction() {
+		return transaction;
 	}
 
-	public void setTransactionID(long transactionID) {
-		this.transactionID = transactionID;
+	public void setTransaction(Transaction transaction) {
+		this.transaction = transaction;
 	}
 }
