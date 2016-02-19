@@ -3,8 +3,6 @@ package edu.ucsb.rc.network;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
-import edu.ucsb.rc.Message;
-
 public class ShardNetworkWorker implements Runnable {
 	private DatagramSocket serverSocket = null;
 	private DatagramPacket packet;

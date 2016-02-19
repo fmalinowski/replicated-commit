@@ -4,7 +4,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
-import edu.ucsb.rc.Message;
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.Shard;
 import edu.ucsb.rc.transactions.Transaction;

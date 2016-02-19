@@ -2,7 +2,6 @@ package edu.ucsb.rc.network;
 
 import java.net.DatagramPacket;
 
-import edu.ucsb.rc.Message;
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.transactions.Transaction;
 

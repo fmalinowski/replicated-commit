@@ -9,7 +9,6 @@ import org.easymock.EasyMock;
 import org.junit.Test;
 import org.powermock.api.easymock.PowerMock;
 
-import edu.ucsb.rc.Message;
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.Shard;
 import edu.ucsb.rc.transactions.Transaction;

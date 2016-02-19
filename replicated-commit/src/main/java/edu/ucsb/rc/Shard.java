@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import edu.ucsb.rc.locks.LocksManager;
+import edu.ucsb.rc.network.Message;
 import edu.ucsb.rc.network.NetworkHandler;
 import edu.ucsb.rc.transactions.Operation;
 import edu.ucsb.rc.transactions.Transaction;
@@ -67,7 +68,7 @@ public class Shard {
 		if (allSharedLocksAcquired) {
 			messageForClient.setMessageType(Message.MessageType.READ_ANSWER);
 		} else {
-			// We remove all locks and remnove the transaction from the current transactions
+			// We remove all locks and remove the transaction from the current transactions
 			// (the transaction is aborted)
 			for (Operation op : readSet) {
 				if (this.operationKeyBelongsToCurrentChard(op)) {

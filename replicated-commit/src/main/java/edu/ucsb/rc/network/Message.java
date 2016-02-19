@@ -1,4 +1,4 @@
-package edu.ucsb.rc;
+package edu.ucsb.rc.network;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
