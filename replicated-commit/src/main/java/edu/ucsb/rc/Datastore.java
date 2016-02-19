@@ -5,7 +5,7 @@ import java.util.HashMap;
 public class Datastore {
 	private static Datastore _instance = null;
 	
-	private Datastore() {
+	protected Datastore() {
 	}
 	
 	public static Datastore getInstance() {
