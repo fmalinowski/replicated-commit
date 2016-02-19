@@ -90,20 +90,20 @@ public class Shard {
 		// TODO
 	}
 	
-	public void addTransaction(Transaction t) {
+	private void addTransaction(Transaction t) {
 		this.transactionsMap.put(t.getServerTransactionId(), t);
 	}
 	
-	public boolean containsTransaction(String serverTransactionId) {
+	private boolean containsTransaction(String serverTransactionId) {
 		return this.transactionsMap.containsKey(serverTransactionId);
 	}
 	
-	public Transaction getTransaction(String serverTransactionId) {
+	private Transaction getTransaction(String serverTransactionId) {
 		return this.transactionsMap.containsKey(serverTransactionId) ? 
 				this.transactionsMap.get(serverTransactionId) : null;
 	}
 	
-	public void removeTransaction(Transaction t) {
+	private void removeTransaction(Transaction t) {
 		if (this.containsTransaction(t.getServerTransactionId())) {
 			this.transactionsMap.remove(t.getServerTransactionId());
 		}
