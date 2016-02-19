@@ -3,24 +3,29 @@ package edu.ucsb.rc.network;
 import static org.junit.Assert.*;
 
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketAddress;
-import java.net.UnknownHostException;
 
 import org.easymock.EasyMock;
-import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.powermock.api.easymock.PowerMock;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-import edu.ucsb.rc.Message;
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.Shard;
 import edu.ucsb.rc.transactions.Transaction;
 
 public class ClientNetworkWorkerTest {
+	
+	class ShardMockClass extends Shard {
+		public Transaction transaction;
+		
+		public void handleReadRequestFromClient(Transaction t) {
+			this.transaction = t;
+		}
+		
+		public void handlePaxosAcceptRequest(Transaction t) {
+			this.transaction = t;
+		}
+	}
 	
 	@Test
 	public void testRunReadRequest__handleReadRequestFromClient_is_called() {		
@@ -64,7 +69,7 @@ public class ClientNetworkWorkerTest {
 	
 	@Test
 	public void testRunReadRequest__correct_transaction_passed_to_shard() {
-		Shard currentShard = new Shard();
+		ShardMockClass currentShard = new ShardMockClass();
 		MultiDatacenter.getInstance().setCurrentShard(currentShard);
 		
 		String clientIpAddress = "81.121.123.135";
@@ -93,9 +98,10 @@ public class ClientNetworkWorkerTest {
 		
 		clientNetworkWorker.run();
 		
-		Transaction receivedTransaction = currentShard.getTransaction(transaction.getServerTransactionId());
+		Transaction receivedTransaction = currentShard.transaction;
 		assertNotNull(receivedTransaction);
 		assertEquals(clientTransactionId, receivedTransaction.getTransactionIdDefinedByClient());
+		assertEquals(clientIpAddress + "/" + clientPort + "/" + clientTransactionId, receivedTransaction.getServerTransactionId());
 	}
 	
 	@Test
@@ -140,7 +146,7 @@ public class ClientNetworkWorkerTest {
 	
 	@Test
 	public void testRunPaxosAcceptRequest__correct_transaction_passed_to_shard() {
-		Shard currentShard = new Shard();
+		ShardMockClass currentShard = new ShardMockClass();
 		MultiDatacenter.getInstance().setCurrentShard(currentShard);
 		
 		String clientIpAddress = "81.121.123.135";
@@ -169,8 +175,9 @@ public class ClientNetworkWorkerTest {
 		
 		clientNetworkWorker.run();
 		
-		Transaction receivedTransaction = currentShard.getTransaction(transaction.getServerTransactionId());
+		Transaction receivedTransaction = currentShard.transaction;
 		assertNotNull(receivedTransaction);
 		assertEquals(clientTransactionId, receivedTransaction.getTransactionIdDefinedByClient());
+		assertEquals(clientIpAddress + "/" + clientPort + "/" + clientTransactionId, receivedTransaction.getServerTransactionId());
 	}
 }

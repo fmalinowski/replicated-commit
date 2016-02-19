@@ -1,4 +1,4 @@
-package edu.ucsb.rc;
+package edu.ucsb.rc.network;
 
 import static org.junit.Assert.*;
 
@@ -9,6 +9,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import edu.ucsb.rc.network.Message;
 import edu.ucsb.rc.transactions.Operation;
 import edu.ucsb.rc.transactions.Transaction;
 

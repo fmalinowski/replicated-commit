@@ -1,4 +1,4 @@
-package edu.ucsb.rc;
+package edu.ucsb.rc.network;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -15,12 +15,14 @@ public class Message implements Serializable {
 	
 	public enum MessageType {
 		READ_REQUEST,
+		READ_FAILED,
+		READ_ANSWER,
 		PAXOS__ACCEPT_REQUEST,
 		TWO_PHASE_COMMIT__PREPARE,
 		TWO_PHASE_COMMIT__PREPARE_ACCEPETD,
 		TWO_PHASE_COMMIT__PREPARE_DENIED,
 		PAXOS__ACCEPT_REQUEST_ACCEPTED,
-		TWO_PHASE_COMMIT__COMMIT		
+		TWO_PHASE_COMMIT__COMMIT
 	}
 	
 	private MessageType messageType;

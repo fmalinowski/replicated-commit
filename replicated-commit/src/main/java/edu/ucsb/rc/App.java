@@ -20,6 +20,7 @@ public class App {
         multiDatacenter = configReader.initializeMultiDatacenter();
         
         networkHandler = new NetworkHandler(multiDatacenter, clientListeningPort, shardListeningPort);
+        multiDatacenter.setNetworkHandler(networkHandler);
         
         LOGGER.info("Listening for shard messages");
         networkHandler.listenForShards();
