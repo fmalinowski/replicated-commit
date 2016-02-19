@@ -1,6 +1,5 @@
 package edu.ucsb.rc.network;
 
-import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
@@ -32,7 +31,7 @@ public class ClientsNetworkListener extends Thread {
 
 			try {
 				this.serverSocket.receive(packet);
-				new Thread(new ClientNetworkWorker(this.serverSocket, packet)).start();
+				new Thread(new ClientNetworkWorker(packet)).start();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

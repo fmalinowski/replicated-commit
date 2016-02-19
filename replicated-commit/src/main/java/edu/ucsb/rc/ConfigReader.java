@@ -1,7 +1,6 @@
 package edu.ucsb.rc;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.Properties;
 
 public class ConfigReader {
@@ -32,13 +31,6 @@ public class ConfigReader {
 			return -1;
 		}
 		return  Integer.parseInt(properties.getProperty("clientListeningPort"));
-	}
-	
-	public int getListeningPortOnClientSide() {
-		if (this.properties == null) {
-			return -1;
-		}
-		return  Integer.parseInt(properties.getProperty("listeningPortOnClientSide"));
 	}
 	
 	public MultiDatacenter initializeMultiDatacenter() {

@@ -12,16 +12,14 @@ public class App {
     	ConfigReader configReader;
         MultiDatacenter multiDatacenter;
         NetworkHandler networkHandler;
-        int shardListeningPort, clientListeningPort, listeningPortOnClientSide;
+        int shardListeningPort, clientListeningPort;
         
         configReader = new ConfigReader(configFilePath);
         shardListeningPort = configReader.getShardListeningPort();
         clientListeningPort = configReader.getClientListeningPort();
-        listeningPortOnClientSide = configReader.getListeningPortOnClientSide();
         multiDatacenter = configReader.initializeMultiDatacenter();
         
-        networkHandler = new NetworkHandler(multiDatacenter, clientListeningPort, 
-        		shardListeningPort, listeningPortOnClientSide);
+        networkHandler = new NetworkHandler(multiDatacenter, clientListeningPort, shardListeningPort);
         
         LOGGER.info("Listening for shard messages");
         networkHandler.listenForShards();
