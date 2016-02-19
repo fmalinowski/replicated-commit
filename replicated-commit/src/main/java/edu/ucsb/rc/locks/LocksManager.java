@@ -11,6 +11,11 @@ public class LocksManager {
 	private class DataObjectLock {
 		public String serverTransactionId;
 		public LockType lockType;
+		
+		public DataObjectLock(String serverTransactionId, LockType lockType) {
+			this.serverTransactionId = serverTransactionId;
+			this.lockType = lockType;
+		}
 	}
 	
 	HashMap<String, DataObjectLock> locks;
@@ -19,29 +24,81 @@ public class LocksManager {
 		this.locks = new HashMap<String, DataObjectLock>();
 	}
 	
-	// Return true if the shared lock was acquired
+	/*
+	 *  Return true if the shared lock was acquired
+	 *  Return false also if a shared lock was acquired by another transaction (Replicated commit rule)
+	 */
 	public synchronized boolean addSharedLock(String key, String serverTransactionId) {
-		// TODO
-		return false;
+		DataObjectLock lock;
+		if (this.locks.containsKey(key)) {
+			lock = this.locks.get(key);
+			if (lock.lockType == LockType.SHARED_LOCK && lock.serverTransactionId == serverTransactionId) {
+				return true;
+			}
+			return false;
+		}
+		lock = new DataObjectLock(serverTransactionId, LockType.SHARED_LOCK);
+		this.locks.put(key, lock);
+		return true;
 	}
 	
-	public synchronized boolean isSharedLock(String key, String serverTransactionId) {
-		// TODO
-		return false;
-	}
-	
-	// Return true if Exclusive lock was acquired (can convert shared lock to exclusive lock)
+	/*
+	 * Return true if Exclusive lock was acquired 
+	 * (can convert shared lock even if it belongs to another transaction to exclusive lock)
+	 * but it cannot acquire an exclusive lock that is already locked by another txn. 
+	 */
 	public synchronized boolean addExclusiveLock(String key, String serverTransactionId) {
-		// TODO
+		DataObjectLock lock;
+		if (this.locks.containsKey(key)) {
+			lock = this.locks.get(key);
+			if (lock.serverTransactionId == serverTransactionId) {
+				lock.lockType = LockType.EXCLUSIVE_LOCK;
+				return true;
+			}
+			if (lock.lockType == LockType.SHARED_LOCK) {
+				lock.lockType = LockType.EXCLUSIVE_LOCK;
+				lock.serverTransactionId = serverTransactionId;
+				return true;
+			}
+			return false;
+		}
+		lock = new DataObjectLock(serverTransactionId, LockType.EXCLUSIVE_LOCK);
+		this.locks.put(key, lock);
+		return true;
+	}
+	
+	/*
+	 * Return true if it's shared locked or exclusively locked
+	 */
+	public synchronized boolean isLocked(String key) {
+		return this.locks.containsKey(key);
+	}
+
+	/*
+	 * Return true if it's shared locked or exclusively locked by a given transaction
+	 */
+	public synchronized boolean isLockedByTransaction(String key, String serverTransactionId) {
+		DataObjectLock lock;
+		if (this.locks.containsKey(key)) {
+			lock = this.locks.get(key);
+			return lock.serverTransactionId == serverTransactionId ? true : false; 
+		}
 		return false;
 	}
 	
-	public synchronized boolean isExclusiveLocked(String key, String serverTransactionId) {
-		// TODO
-		return false;
-	}
-	
-	public synchronized void removeLock(String key, String serverTransactionId) {
-		// TODO
+	/*
+	 * Return true if the lock was removed successfully (lock belonged to the right transaction)
+	 */
+	public synchronized boolean removeLock(String key, String serverTransactionId) {
+		DataObjectLock lock;
+		if (this.locks.containsKey(key)) {
+			lock = this.locks.get(key);
+			if (lock.serverTransactionId == serverTransactionId) {
+				this.locks.remove(key);
+				return true;
+			}
+			return false;
+		}
+		return true;
 	}
 }
