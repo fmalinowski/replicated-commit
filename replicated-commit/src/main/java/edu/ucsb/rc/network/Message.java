@@ -27,6 +27,7 @@ public class Message implements Serializable {
 	
 	private MessageType messageType;
 	private Transaction transaction;
+	private int shardIdOfSender; // When a shard sends a 2PC message to the other shards of a same DC
 	
 	// We will use this class to send messages over the network for clients and shards
 	// All the objects that are contained in this class and that we want to send over the network
@@ -81,5 +82,13 @@ public class Message implements Serializable {
 
 	public void setTransaction(Transaction transaction) {
 		this.transaction = transaction;
+	}
+
+	public int getShardIdOfSender() {
+		return shardIdOfSender;
+	}
+
+	public void setShardIdOfSender(int shardIdOfSender) {
+		this.shardIdOfSender = shardIdOfSender;
 	}
 }
