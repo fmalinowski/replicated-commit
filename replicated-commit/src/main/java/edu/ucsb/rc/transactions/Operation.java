@@ -10,6 +10,8 @@ public class Operation implements Serializable {
 		READ, WRITE
 	}
 	
+	private static int numberOfShardsPerDatacenter = 3;
+	
 	private Type type;
 	private String key;
 	private HashMap<String, String> columnValues;
@@ -49,5 +51,24 @@ public class Operation implements Serializable {
 
 	public void setTimestamp(long timestamp) {
 		this.timestamp = timestamp;
+	}
+	
+	public static void setShardsNumberPerDatacenter(int numberOfShardsPerDatacenter) {
+		Operation.numberOfShardsPerDatacenter = numberOfShardsPerDatacenter;
+	}
+	
+	public static void getShardsNumberPerDatacenter(int numberOfShardsPerDatacenter) {
+		Operation.numberOfShardsPerDatacenter = numberOfShardsPerDatacenter;
+	}
+	
+	public static int getShardIdHoldingData(String key) {
+		if (key == null) {
+			return -1;
+		}
+		return (key.hashCode() % Operation.numberOfShardsPerDatacenter);
+	}
+	
+	public int getShardIdHoldingData() {
+		return Operation.getShardIdHoldingData(this.key);
 	}
 }
