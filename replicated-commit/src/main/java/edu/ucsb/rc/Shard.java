@@ -110,8 +110,68 @@ public class Shard {
 		}
 	}
 	
-	public void handleTwoPhaseCommitPrepare(Transaction t) {
+	public void handleTwoPhaseCommitPrepare(Transaction t, int shardIdOfSender) {
 		// Handle a 2PC prepare request
+		Shard shardSender = this.datacenter.getShard(shardIdOfSender);
+		
+		if (!this.checkSharedLocksAreStillAcquiredForTxn(t)) {
+			// Remove all shared locks for Txn
+			this.removeAllSharedLocksForTxn(t);
+			
+			this.sendMessageToOtherShard(shardSender, Message.MessageType.TWO_PHASE_COMMIT__PREPARE_DENIED, t);
+			return;
+		}
+		if (!this.acquireExclusiveLocksForTxn(t)) {
+			// Remove all locks for Txn
+			this.removeAllLocksForTxn(t);
+			
+			this.sendMessageToOtherShard(shardSender, Message.MessageType.TWO_PHASE_COMMIT__PREPARE_DENIED, t);
+			return;
+		}
+		
+		// Remove all shared locks for Txn
+		this.removeAllSharedLocksForTxn(t);
+		
+		this.sendMessageToOtherShard(shardSender, Message.MessageType.TWO_PHASE_COMMIT__PREPARE_ACCEPTED, t);
+	}
+	
+	public boolean checkSharedLocksAreStillAcquiredForTxn(Transaction t) {
+		ArrayList<Operation> readSet = t.getReadSet();
+		
+		for (Operation readOp : readSet) {
+			if (!this.locksManager.isLockedByTransaction(readOp.getKey(), t.getServerTransactionId())) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public boolean acquireExclusiveLocksForTxn(Transaction t) {
+		ArrayList<Operation> writeSet = t.getWriteSet();
+		
+		for (Operation writeOp : writeSet) {
+			if (!this.locksManager.addExclusiveLock(writeOp.getKey(), t.getServerTransactionId())) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public void removeAllSharedLocksForTxn(Transaction t) {
+		ArrayList<Operation> readSet = t.getReadSet();
+		
+		for (Operation readOp : readSet) {
+			this.locksManager.removeLock(readOp.getKey(), t.getServerTransactionId());
+		}
+	}
+	
+	public void removeAllLocksForTxn(Transaction t) {
+		this.removeAllSharedLocksForTxn(t);
+		ArrayList<Operation> writeSet = t.getWriteSet();
+		
+		for (Operation writeOp : writeSet) {
+			this.locksManager.removeLock(writeOp.getKey(), t.getServerTransactionId());
+		}
 	}
 	
 	private void addTransaction(Transaction t) {
@@ -135,5 +195,15 @@ public class Shard {
 	
 	public boolean operationKeyBelongsToCurrentChard(Operation op) {
 		return this.datacenter.getShardIdForKey(op.getKey()) == this.shardID;
+	}
+	
+	private void sendMessageToOtherShard(Shard shard, Message.MessageType messageType, Transaction t) {
+		Message messageForShardSender = new Message();
+		messageForShardSender.setMessageType(messageType);
+		messageForShardSender.setShardIdOfSender(this.shardID);
+		messageForShardSender.setTransaction(t);
+		
+		NetworkHandler networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
+		networkHandler.sendMessageToShard(shard, messageForShardSender);
 	}
 }
