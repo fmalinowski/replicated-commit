@@ -20,6 +20,11 @@ public class TwoPhaseCommitManager {
 		this.twoPCtimestamps.put(t.getServerTransactionId(), System.currentTimeMillis());
 	}
 	
+	public synchronized void stopTracking2PCaccepts(Transaction t) {
+		this.twoPCacceptedRequestsMap.remove(t.getServerTransactionId());
+		this.twoPCtimestamps.remove(t.getServerTransactionId());
+	}
+	
 	public synchronized boolean signalAcceptedPrepare(Transaction t) {
 		if (!this.twoPCacceptedRequestsMap.containsKey(t.getServerTransactionId())) {
 			return false;
