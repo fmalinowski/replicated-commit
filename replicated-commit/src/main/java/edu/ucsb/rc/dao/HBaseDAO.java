@@ -21,9 +21,6 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
-/*
- * @author Sharath Rao
- */
 public class HBaseDAO {
 
 	private Configuration config;
