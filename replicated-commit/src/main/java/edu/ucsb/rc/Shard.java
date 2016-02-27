@@ -200,7 +200,8 @@ public class Shard {
 			this.sendMessageToClient(Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED, t);
 			
 			if (reachedMajorityPaxosAccepts) {
-				// Transaction is committed
+				// Transaction has to be committed
+				this.start2PCcommitInDatacenter(t);
 			}
 		}
 	}
@@ -214,6 +215,41 @@ public class Shard {
 		for (Shard otherCoordinator : coordinatorsInOtherDCs) {
 			this.sendMessageToOtherShard(otherCoordinator, Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED, t);
 		}
+	}
+	
+	public void handlePaxosAcceptRequestAccepted(Transaction t, int shardIdOfSender) {
+		/*
+		 *  We increase number of accepts for that transaction. If we reached majority of accepts,
+		 *  we start 2PC commit in datacenter (the transaction is committed).
+		 */
+		if (this.paxosAcceptsManager.increaseAcceptAccepted(t)) {
+			// Transaction has to be committed
+			this.start2PCcommitInDatacenter(t);
+		}
+	}
+	
+	public void start2PCcommitInDatacenter(Transaction t) {
+		// We no longer need to track number of accepts
+		this.paxosAcceptsManager.removeTrackOfPaxosAccepts(t);
+		
+		ArrayList<Shard> shardsInDatacenter = this.datacenter.getShards();
+		for (Shard cohortShard : shardsInDatacenter) {
+			this.sendMessageToOtherShard(cohortShard, Message.MessageType.TWO_PHASE_COMMIT__COMMIT, t);
+		}
+	}
+	
+	public void handleTwoPhaseCommitCommit(Transaction t, int shardIdOfSender) {
+		Datastore datastore = Datastore.getInstance();
+		ArrayList<Operation> writeSet = t.getWriteSet();
+		
+		for (Operation writeOp : writeSet) {
+			if (writeOp.getShardIdHoldingData() == this.shardID) {
+				datastore.write(writeOp.getKey(), writeOp.getColumnValues());
+			}
+		}
+		
+		this.removeAllLocksForTxn(t);
+		// Transaction is officially committed in this shard!!!
 	}
 	
 	private void addTransaction(Transaction t) {
