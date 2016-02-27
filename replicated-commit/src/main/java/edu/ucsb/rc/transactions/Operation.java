@@ -13,6 +13,7 @@ public class Operation implements Serializable {
 	private Type type;
 	private String key;
 	private HashMap<String, String> columnValues;
+	private long timestamp;
 	
 	public Operation() {
 		this.columnValues = new HashMap<String, String>();
@@ -40,5 +41,13 @@ public class Operation implements Serializable {
 
 	public void setColumnValues(HashMap<String, String> columnValues) {
 		this.columnValues = columnValues;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
+	}
+
+	public void setTimestamp(long timestamp) {
+		this.timestamp = timestamp;
 	}
 }
