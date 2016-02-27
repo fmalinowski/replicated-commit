@@ -11,6 +11,12 @@ public class Datacenter {
 		this.setDatacenterID(-1);
 	}
 	
+	public void initializeShards() {
+		for (Shard shard : this.shards) {
+			shard.initializeShard();
+		}
+	}
+	
 	public void addShard(Shard shard) {
 		this.shards.add(shard);
 	}

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import edu.ucsb.rc.locks.LocksManager;
 import edu.ucsb.rc.network.Message;
 import edu.ucsb.rc.network.NetworkHandler;
+import edu.ucsb.rc.protocols.PaxosAcceptsManager;
 import edu.ucsb.rc.protocols.TwoPhaseCommitManager;
 import edu.ucsb.rc.transactions.Operation;
 import edu.ucsb.rc.transactions.Transaction;
@@ -17,10 +18,16 @@ public class Shard {
 	private HashMap<String, Transaction> transactionsMap;
 	private LocksManager locksManager;
 	private TwoPhaseCommitManager twoPCmanager;
+	private PaxosAcceptsManager paxosAcceptsManager;
 	
 	public Shard() {
 		this.transactionsMap = new HashMap<String, Transaction>();
 		this.locksManager = new LocksManager();
+	}
+	
+	public void initializeShard() {
+		this.twoPCmanager = new TwoPhaseCommitManager(this.datacenter.getShards().size());
+		this.paxosAcceptsManager = new PaxosAcceptsManager(MultiDatacenter.getInstance().getDatacenters().size());
 	}
 	
 	public String getIpAddress() {
@@ -45,7 +52,6 @@ public class Shard {
 
 	public void setDatacenter(Datacenter datacenter) {
 		this.datacenter = datacenter;
-		this.twoPCmanager = new TwoPhaseCommitManager(this.datacenter.getShards().size());
 	}
 	
 	public void handleReadRequestFromClient(Transaction t) {
@@ -174,6 +180,78 @@ public class Shard {
 		}
 	}
 	
+	public void handleTwoPhaseCommitPrepareAccepted(Transaction t, int shardIdOfSender) {
+		/* We signal a new accepted 2PC prepare. If everybody has accepted, we send
+		 * paxos accept accepted to client and all other coordinators in other datacenters.
+		 */
+		
+		NetworkHandler networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
+		
+		if (this.twoPCmanager.signalAcceptedPrepare(t)) {
+			this.twoPCmanager.stopTracking2PCaccepts(t);
+			
+			boolean reachedMajorityPaxosAccepts = this.paxosAcceptsManager.increaseAcceptAccepted(t);
+			
+			ArrayList<Shard> coordinatorsInOtherDCs = MultiDatacenter.getInstance().getOtherShardsWithId(this.shardID);
+			for (Shard otherCoordinator : coordinatorsInOtherDCs) {
+				this.sendMessageToOtherShard(otherCoordinator, Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED, t);
+			}
+			
+			this.sendMessageToClient(Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED, t);
+			
+			if (reachedMajorityPaxosAccepts) {
+				// Transaction has to be committed
+				this.start2PCcommitInDatacenter(t);
+			}
+		}
+	}
+	
+	public void handleTwoPhaseCommitPrepareDenied(Transaction t, int shardIdOfSender) {
+		this.twoPCmanager.stopTracking2PCaccepts(t);
+		this.sendMessageToClient(Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED, t);
+		
+		// Is that necessary? Protocol doesn't mention that but could be helpful to release some memory
+		ArrayList<Shard> coordinatorsInOtherDCs = MultiDatacenter.getInstance().getOtherShardsWithId(this.shardID);
+		for (Shard otherCoordinator : coordinatorsInOtherDCs) {
+			this.sendMessageToOtherShard(otherCoordinator, Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED, t);
+		}
+	}
+	
+	public void handlePaxosAcceptRequestAccepted(Transaction t, int shardIdOfSender) {
+		/*
+		 *  We increase number of accepts for that transaction. If we reached majority of accepts,
+		 *  we start 2PC commit in datacenter (the transaction is committed).
+		 */
+		if (this.paxosAcceptsManager.increaseAcceptAccepted(t)) {
+			// Transaction has to be committed
+			this.start2PCcommitInDatacenter(t);
+		}
+	}
+	
+	public void start2PCcommitInDatacenter(Transaction t) {
+		// We no longer need to track number of accepts
+		this.paxosAcceptsManager.removeTrackOfPaxosAccepts(t);
+		
+		ArrayList<Shard> shardsInDatacenter = this.datacenter.getShards();
+		for (Shard cohortShard : shardsInDatacenter) {
+			this.sendMessageToOtherShard(cohortShard, Message.MessageType.TWO_PHASE_COMMIT__COMMIT, t);
+		}
+	}
+	
+	public void handleTwoPhaseCommitCommit(Transaction t, int shardIdOfSender) {
+		Datastore datastore = Datastore.getInstance();
+		ArrayList<Operation> writeSet = t.getWriteSet();
+		
+		for (Operation writeOp : writeSet) {
+			if (writeOp.getShardIdHoldingData() == this.shardID) {
+				datastore.write(writeOp.getKey(), writeOp.getColumnValues());
+			}
+		}
+		
+		this.removeAllLocksForTxn(t);
+		// Transaction is officially committed in this shard!!!
+	}
+	
 	private void addTransaction(Transaction t) {
 		this.transactionsMap.put(t.getServerTransactionId(), t);
 	}
@@ -205,5 +283,15 @@ public class Shard {
 		
 		NetworkHandler networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
 		networkHandler.sendMessageToShard(shard, messageForShardSender);
+	}
+	
+	private void sendMessageToClient(Message.MessageType messageType, Transaction t) {
+		Message messageForClient = new Message();
+		messageForClient.setMessageType(messageType);
+		messageForClient.setShardIdOfSender(this.shardID);
+		messageForClient.setTransaction(t);
+		
+		NetworkHandler networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
+		networkHandler.sendMessageToClient(t, messageForClient);
 	}
 }

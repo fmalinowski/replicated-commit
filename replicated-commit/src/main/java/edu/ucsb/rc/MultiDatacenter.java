@@ -57,4 +57,20 @@ public class MultiDatacenter {
 	public void setNetworkHandler(NetworkHandler networkHandler) {
 		this.networkHandler = networkHandler;
 	}
+	
+	public void initializeShards() {
+		for (Datacenter dc : this.datacenters) {
+			dc.initializeShards();
+		}
+	}
+	
+	public ArrayList<Shard> getOtherShardsWithId(int shardID) {
+		ArrayList<Shard> allShards = new ArrayList<Shard>();
+		
+		for (Datacenter dc : this.datacenters) {
+			allShards.add(dc.getShard(shardID));
+		}
+		
+		return allShards;
+	}
 }

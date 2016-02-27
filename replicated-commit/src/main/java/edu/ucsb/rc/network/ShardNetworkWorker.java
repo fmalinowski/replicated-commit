@@ -30,5 +30,17 @@ public class ShardNetworkWorker implements Runnable {
 		if (messageFromOtherShard.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT__PREPARE) {
 			multiDatacenter.getCurrentShard().handleTwoPhaseCommitPrepare(transaction, messageFromOtherShard.getShardIdOfSender());
 		}
+		if (messageFromOtherShard.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT__PREPARE_ACCEPTED) {
+			multiDatacenter.getCurrentShard().handleTwoPhaseCommitPrepareAccepted(transaction, messageFromOtherShard.getShardIdOfSender());
+		}
+		if (messageFromOtherShard.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT__PREPARE_DENIED) {
+			multiDatacenter.getCurrentShard().handleTwoPhaseCommitPrepareDenied(transaction, messageFromOtherShard.getShardIdOfSender());
+		}
+		if (messageFromOtherShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
+			multiDatacenter.getCurrentShard().handlePaxosAcceptRequestAccepted(transaction, messageFromOtherShard.getShardIdOfSender());
+		}
+		if (messageFromOtherShard.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT__COMMIT) {
+			multiDatacenter.getCurrentShard().handleTwoPhaseCommitCommit(transaction, messageFromOtherShard.getShardIdOfSender());
+		}
 	}	
 }
