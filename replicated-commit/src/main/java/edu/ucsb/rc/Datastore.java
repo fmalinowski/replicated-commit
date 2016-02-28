@@ -17,10 +17,14 @@ public class Datastore {
 
 	/*
 	 *  This reads the row associated with the key from the datastore
-	 *  The keys of the HashMap represent the name of the columns 
+	 *  The keys of the HashMap represent the name of the columns
+	 *  It returns the timestamp of the last update of that row in HBase 
 	 */
-	public void read(String key, HashMap<String, String> columnValues) {
+	public int read(String key, HashMap<String, String> columnValues) {
 		// TODO
+		
+		// We need to return the timestamp of the last update of that row in HBase
+		return -1;
 	}
 	
 	/*

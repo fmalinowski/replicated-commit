@@ -61,8 +61,12 @@ public class ShardTest {
 		PowerMock.expectLastCall().andReturn(datastoreMock).times(2);
 		
 		/* Expect the following calls to be made */
+		long mockTimestampForOp1 = 1000000;
+		long mockTimestampForOp3 = 2000000;
 		datastoreMock.read(op1.getKey(), op1.getColumnValues());
+		PowerMock.expectLastCall().andReturn(mockTimestampForOp1);
 		datastoreMock.read(op3.getKey(), op3.getColumnValues());
+		PowerMock.expectLastCall().andReturn(mockTimestampForOp3);
 		messageMock.setTransaction(t);
 		messageMock.setMessageType(Message.MessageType.READ_ANSWER);
 		networkHandlerMock.sendMessageToClient(t, messageMock);
@@ -72,6 +76,10 @@ public class ShardTest {
 		
 		/* Let's run the test */
 		currentShard.handleReadRequestFromClient(t);
+		
+		/* We make sure that the read handler set the timestamp of last update for the read operations */
+		assertEquals(mockTimestampForOp1, op1.getTimestamp());
+		assertEquals(mockTimestampForOp3, op3.getTimestamp());
 		
 		/* Make sure all the expected calls were made */
 		PowerMock.verifyAll();
@@ -126,8 +134,12 @@ public class ShardTest {
 		PowerMock.expectLastCall().andReturn(datastoreMock).times(2);
 		
 		/* Expect the following calls to be made */
+		long mockTimestampForOp0 = 1000000;
+		long mockTimestampForOp1 = 2000000; 
 		datastoreMock.read(op0.getKey(), op0.getColumnValues());
+		PowerMock.expectLastCall().andReturn(mockTimestampForOp0);
 		datastoreMock.read(op1.getKey(), op1.getColumnValues());
+		PowerMock.expectLastCall().andReturn(mockTimestampForOp1);
 		
 		messageMock1.setTransaction(t1);
 		messageMock1.setMessageType(Message.MessageType.READ_ANSWER);
@@ -143,6 +155,10 @@ public class ShardTest {
 		/* Let's run the test */
 		currentShard.handleReadRequestFromClient(t1);
 		currentShard.handleReadRequestFromClient(t2);
+		
+		/* We make sure that the read handler set the timestamp of last update for the read operations */
+		assertEquals(mockTimestampForOp0, op0.getTimestamp());
+		assertEquals(mockTimestampForOp1, op1.getTimestamp());
 		
 		/* Make sure all the expected calls were made */
 		PowerMock.verifyAll();
