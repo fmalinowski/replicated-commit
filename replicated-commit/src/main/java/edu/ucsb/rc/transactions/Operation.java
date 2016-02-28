@@ -57,8 +57,8 @@ public class Operation implements Serializable {
 		Operation.numberOfShardsPerDatacenter = numberOfShardsPerDatacenter;
 	}
 	
-	public static void getShardsNumberPerDatacenter(int numberOfShardsPerDatacenter) {
-		Operation.numberOfShardsPerDatacenter = numberOfShardsPerDatacenter;
+	public static int getShardsNumberPerDatacenter() {
+		return Operation.numberOfShardsPerDatacenter;
 	}
 	
 	public static int getShardIdHoldingData(String key) {
