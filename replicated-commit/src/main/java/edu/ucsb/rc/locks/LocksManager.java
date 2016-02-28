@@ -1,6 +1,10 @@
 package edu.ucsb.rc.locks;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+
+import edu.ucsb.rc.transactions.Operation;
+import edu.ucsb.rc.transactions.Transaction;
 
 public class LocksManager {
 	public enum LockType {
@@ -100,5 +104,59 @@ public class LocksManager {
 			return false;
 		}
 		return true;
+	}
+	
+	/*
+	 * Return true if all shared locks (read locks) are still acquired for a transaction
+	 */
+	public synchronized boolean checkSharedLocksAreStillAcquiredForTxn(Transaction t) {
+		ArrayList<Operation> readSet = t.getReadSet();
+		
+		for (Operation readOp : readSet) {
+			if (!this.isLockedByTransaction(readOp.getKey(), t.getServerTransactionId())) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	/*
+	 * Return true if all exclusive locks (write locks) are acquired for a transaction
+	 * This method doesn't have to be thread safe
+	 */
+	public boolean acquireExclusiveLocksForTxn(Transaction t) {
+		ArrayList<Operation> writeSet = t.getWriteSet();
+		
+		for (Operation writeOp : writeSet) {
+			if (!this.addExclusiveLock(writeOp.getKey(), t.getServerTransactionId())) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	/*
+	 * Remove all the locks (shared locks and exclusive locks) for a transaction
+	 * This method doesn't have to be thread safe
+	 */
+	public void removeAllLocksForTxn(Transaction t) {
+		this.removeAllSharedLocksForTxn(t);
+		ArrayList<Operation> writeSet = t.getWriteSet();
+		
+		for (Operation writeOp : writeSet) {
+			this.removeLock(writeOp.getKey(), t.getServerTransactionId());
+		}
+	}
+	
+	/*
+	 * Remove all the shared locks for a transaction
+	 * This method doesn't have to be thread safe
+	 */
+	public void removeAllSharedLocksForTxn(Transaction t) {
+		ArrayList<Operation> readSet = t.getReadSet();
+		
+		for (Operation readOp : readSet) {
+			this.removeLock(readOp.getKey(), t.getServerTransactionId());
+		}
 	}
 }
