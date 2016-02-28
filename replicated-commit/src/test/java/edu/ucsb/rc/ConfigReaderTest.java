@@ -14,6 +14,7 @@ public class ConfigReaderTest {
 
 	@After
 	public void tearDown() throws Exception {
+		MultiDatacenter.getInstance().removeAllDatacenters();
 	}
 	
 	@Test

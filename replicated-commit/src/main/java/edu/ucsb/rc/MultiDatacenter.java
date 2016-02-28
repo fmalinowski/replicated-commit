@@ -1,18 +1,20 @@
 package edu.ucsb.rc;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 
 import edu.ucsb.rc.network.NetworkHandler;
 
 public class MultiDatacenter {
 	private static MultiDatacenter _instance;
-	private ArrayList<Datacenter> datacenters;
+	private HashMap<Integer, Datacenter> datacenters;
 	private Datacenter currentDatacenter;
 	private Shard currentShard;
 	private NetworkHandler networkHandler;
 	
 	private MultiDatacenter() {
-		this.datacenters = new ArrayList<Datacenter>();
+		this.datacenters = new HashMap<Integer, Datacenter>();
 	}
 	
 	public static MultiDatacenter getInstance() {
@@ -22,16 +24,26 @@ public class MultiDatacenter {
 		return _instance;
 	}
 	
-	public void addDatacenter(Datacenter dc) {
-		this.datacenters.add(dc);
+	public void addDatacenter(Datacenter dc) throws Exception {
+		if (dc.getDatacenterID() < 0) {
+			throw new Exception("The datacenter ID is not set. The datacenter cannot be added to the MultiDatacenter");
+		}
+		if (this.datacenters.containsKey(dc.getDatacenterID())) {
+			throw new Exception("The datacenter ID already exists in the MultiDatacenter. The datacenter cannot be added to the MultiDatacenter");
+		}
+		this.datacenters.put(dc.getDatacenterID(), dc);
 	}
 	
 	public ArrayList<Datacenter> getDatacenters() {
-		return this.datacenters;
+		return new ArrayList<Datacenter>(this.datacenters.values());
+	}
+	
+	public void removeAllDatacenters() {
+		this.datacenters.clear();
 	}
 	
 	public Datacenter getDatacenter(int id) {
-		return id < this.datacenters.size() ? this.datacenters.get(id) : null;
+		return this.datacenters.containsKey(id) ? this.datacenters.get(id) : null;
 	}
 	
 	public void setCurrentDatacenter(Datacenter dc) {
@@ -59,7 +71,8 @@ public class MultiDatacenter {
 	}
 	
 	public void initializeShards() {
-		for (Datacenter dc : this.datacenters) {
+		Collection<Datacenter> allDatacenters = this.datacenters.values();
+		for (Datacenter dc : allDatacenters) {
 			dc.initializeShards();
 		}
 	}
@@ -67,7 +80,8 @@ public class MultiDatacenter {
 	public ArrayList<Shard> getOtherShardsWithId(int shardID) {
 		ArrayList<Shard> allShards = new ArrayList<Shard>();
 		
-		for (Datacenter dc : this.datacenters) {
+		Collection<Datacenter> allDatacenters = this.datacenters.values();
+		for (Datacenter dc : allDatacenters) {
 			if (this.currentDatacenter != dc) {
 				allShards.add(dc.getShard(shardID));
 			}

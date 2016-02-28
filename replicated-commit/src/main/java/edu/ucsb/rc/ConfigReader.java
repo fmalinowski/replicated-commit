@@ -54,7 +54,11 @@ public class ConfigReader {
 		for (int datacenterID = 0; datacenterID < datacentersNumber; datacenterID++) {
 			datacenter = new Datacenter();
 			datacenter.setDatacenterID(datacenterID);
-			multiDatacenter.addDatacenter(datacenter);
+			try {
+				multiDatacenter.addDatacenter(datacenter);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 			
 			for (int shardID = 0; shardID < shardsPerDatacenter; shardID++) {
 				shardIPAddress = properties.getProperty("DC" + datacenterID + "-Shard" + shardID);
