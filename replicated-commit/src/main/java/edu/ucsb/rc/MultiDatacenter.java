@@ -68,7 +68,9 @@ public class MultiDatacenter {
 		ArrayList<Shard> allShards = new ArrayList<Shard>();
 		
 		for (Datacenter dc : this.datacenters) {
-			allShards.add(dc.getShard(shardID));
+			if (this.currentDatacenter != dc) {
+				allShards.add(dc.getShard(shardID));
+			}
 		}
 		
 		return allShards;
