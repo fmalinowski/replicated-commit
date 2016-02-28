@@ -19,6 +19,7 @@ public class App {
         clientListeningPort = configReader.getClientListeningPort();
         multiDatacenter = configReader.initializeMultiDatacenter();
         multiDatacenter.initializeShards();
+        multiDatacenter.initializeDatastore();
         
         networkHandler = new NetworkHandler(multiDatacenter, clientListeningPort, shardListeningPort);
         multiDatacenter.setNetworkHandler(networkHandler);

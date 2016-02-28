@@ -73,4 +73,9 @@ public class MultiDatacenter {
 		
 		return allShards;
 	}
+	
+	public void initializeDatastore() {
+		Datastore datastore = Datastore.getInstance();
+		datastore.initialize();
+	}
 }

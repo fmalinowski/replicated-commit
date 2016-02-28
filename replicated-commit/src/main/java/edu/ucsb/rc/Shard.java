@@ -66,7 +66,7 @@ public class Shard {
 			if (this.operationKeyBelongsToCurrentChard(op)) {
 				if (allSharedLocksAcquired = this.locksManager.addSharedLock(op.getKey(), t.getServerTransactionId())) {
 					// read value of key in datastore
-					int timestampOfLastUpdate = Datastore.getInstance().read(op.getKey(), op.getColumnValues());
+					long timestampOfLastUpdate = Datastore.getInstance().read(op.getKey(), op.getColumnValues());
 					op.setTimestamp(timestampOfLastUpdate);
 				} else {
 					break;
