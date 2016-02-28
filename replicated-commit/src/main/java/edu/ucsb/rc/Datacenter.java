@@ -19,6 +19,7 @@ public class Datacenter {
 	
 	public void addShard(Shard shard) {
 		this.shards.add(shard);
+		shard.setDatacenter(this);
 	}
 	
 	public ArrayList<Shard> getShards() {
