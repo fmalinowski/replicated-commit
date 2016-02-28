@@ -2,8 +2,11 @@ package edu.ucsb.rc;
 
 import java.util.HashMap;
 
+import edu.ucsb.rc.dao.HBaseDAO;
+
 public class Datastore {
 	private static Datastore _instance = null;
+	private HBaseDAO hbaseDao;
 	
 	protected Datastore() {
 	}
@@ -13,6 +16,11 @@ public class Datastore {
 			_instance = new Datastore();
 		}
 		return _instance;
+	}
+	
+	public void initialize() {
+		this.hbaseDao = new HBaseDAO();
+		// We need to create the table here!
 	}
 
 	/*
