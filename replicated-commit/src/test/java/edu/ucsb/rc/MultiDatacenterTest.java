@@ -18,7 +18,7 @@ import edu.ucsb.rc.protocols.PaxosAcceptsManager;
 import edu.ucsb.rc.protocols.TwoPhaseCommitManager;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({MultiDatacenter.class, Datacenter.class, Shard.class})
+@PrepareForTest({Shard.class})
 public class MultiDatacenterTest {
 	
 	@After
