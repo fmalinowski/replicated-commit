@@ -65,7 +65,11 @@ public class ConfigReader {
 				shard = new Shard();
 				shard.setShardID(shardID);
 				shard.setIpAddress(shardIPAddress);
-				datacenter.addShard(shard);
+				try {
+					datacenter.addShard(shard);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
 		}
 		

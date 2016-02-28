@@ -23,6 +23,7 @@ public class Shard {
 	
 	public Shard() {
 		this.locksManager = new LocksManager();
+		this.setShardID(-1);
 	}
 	
 	public void initializeShard() {
