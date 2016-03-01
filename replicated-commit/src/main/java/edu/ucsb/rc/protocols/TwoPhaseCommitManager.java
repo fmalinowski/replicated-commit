@@ -42,6 +42,6 @@ public class TwoPhaseCommitManager {
 		}
 		int numberOfAcceptations = this.twoPCacceptedRequestsMap.get(t.getServerTransactionId());
 		
-		return (numberOfAcceptations == this.shardsNumberPerDatacenter) ? true : false;
+		return (numberOfAcceptations >= this.shardsNumberPerDatacenter) ? true : false;
 	}
 }
