@@ -2,7 +2,9 @@ package edu.ucsb.rc.dao;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -107,6 +109,24 @@ public class HBaseDAO {
 		table.close();
 
 	}
+	
+	public void addRecordWithSeveralQualifiers(String tableName, String rowKey, String family,
+			HashMap<String, String> qualifierValues) throws Exception {
+
+		HTable table = new HTable(config, tableName);
+		
+		Set<String> qualifiers = qualifierValues.keySet();
+		Put put = new Put(Bytes.toBytes(rowKey));
+		
+		for (String qualifier : qualifiers) {
+			String qualifierValue = qualifierValues.get(qualifier);
+			put.add(Bytes.toBytes(family), Bytes.toBytes(qualifier),
+					Bytes.toBytes(qualifierValue));
+		}
+		
+		table.put(put);
+		table.close();
+	}
 
 	/**
 	 * Delete a row
@@ -137,6 +157,29 @@ public class HBaseDAO {
 			System.out.println(new String(kv.getValue()));
 		}
 		table.close();
+	}
+	
+	public long getValuesOfOneRecord(String tableName, String rowKey, String family, 
+			HashMap<String, String> qualifierValues) throws IOException {
+		long mostRecentTimestamp = -1;
+		
+		HTable table = new HTable(config, tableName);
+		Get get = new Get(rowKey.getBytes());
+		Result rs = table.get(get);
+		
+		Set<String> keys = qualifierValues.keySet();
+		for (String key : keys) {
+			KeyValue valueForKey = rs.getColumnLatest(family.getBytes(), key.getBytes());
+			qualifierValues.put(key, new String(valueForKey.getValue()));
+			
+			long timestampOfQualifier = valueForKey.getTimestamp();
+			
+			if (timestampOfQualifier > mostRecentTimestamp) {
+				mostRecentTimestamp = timestampOfQualifier;
+			}
+		}
+		table.close();
+		return mostRecentTimestamp;
 	}
 
 	/**

@@ -14,6 +14,7 @@ public class ConfigReaderTest {
 
 	@After
 	public void tearDown() throws Exception {
+		MultiDatacenter.getInstance().removeAllDatacenters();
 	}
 	
 	@Test
@@ -58,6 +59,30 @@ public class ConfigReaderTest {
 		
 		assertEquals(1, multiDatacenter.getCurrentDatacenter().getDatacenterID());
 		assertEquals(2, multiDatacenter.getCurrentShard().getShardID());
+		
+		Datacenter dc0 = multiDatacenter.getDatacenter(0);
+		Datacenter dc1 = multiDatacenter.getDatacenter(1);
+		Datacenter dc2 = multiDatacenter.getDatacenter(2);
+		
+		Shard shard0a = dc0.getShard(0);
+		Shard shard0b = dc0.getShard(1);
+		Shard shard0c = dc0.getShard(2);
+		Shard shard1a = dc1.getShard(0);
+		Shard shard1b = dc1.getShard(1);
+		Shard shard1c = dc1.getShard(2);
+		Shard shard2a = dc2.getShard(0);
+		Shard shard2b = dc2.getShard(1);
+		Shard shard2c = dc2.getShard(2);
+		
+		assertEquals(dc0, shard0a.getDatacenter());
+		assertEquals(dc0, shard0b.getDatacenter());
+		assertEquals(dc0, shard0c.getDatacenter());
+		assertEquals(dc1, shard1a.getDatacenter());
+		assertEquals(dc1, shard1b.getDatacenter());
+		assertEquals(dc1, shard1c.getDatacenter());
+		assertEquals(dc2, shard2a.getDatacenter());
+		assertEquals(dc2, shard2b.getDatacenter());
+		assertEquals(dc2, shard2c.getDatacenter());
 	}
 
 }

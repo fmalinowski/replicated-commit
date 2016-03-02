@@ -3,6 +3,8 @@ package edu.ucsb.rc.network;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.Shard;
@@ -14,6 +16,9 @@ public class NetworkHandler {
 	private ClientsNetworkListener clientsNetworkListener;
 	private DatagramSocket socketForClients;
 	private DatagramSocket socketForShards;
+	
+	private Lock clientsSocketLock;
+	private Lock shardsSocketLock;
 
 	public NetworkHandler(MultiDatacenter multiDatacenter, int clientsPort, int shardsPort) {
 		this.shardsPort = shardsPort;
@@ -24,6 +29,9 @@ public class NetworkHandler {
 			
 			this.shardsNetworkListener = new ShardsNetworkListener(socketForShards);
 			this.clientsNetworkListener = new ClientsNetworkListener(socketForClients);
+			
+			this.clientsSocketLock = new ReentrantLock();
+			this.shardsSocketLock = new ReentrantLock();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -50,7 +58,7 @@ public class NetworkHandler {
 			DatagramPacket sendPacket = new DatagramPacket(bytesToSend, bytesToSend.length, 
 					shardAddress, this.shardsPort);
 			
-			this.socketForShards.send(sendPacket);
+			this.socketForShards.send(sendPacket); // It's thread safe
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -66,8 +74,8 @@ public class NetworkHandler {
 		
 			DatagramPacket sendPacket = new DatagramPacket(bytesToSend, bytesToSend.length, 
 				clientAddress, transaction.getClientPort());
-		
-			this.socketForClients.send(sendPacket);
+			
+			this.socketForClients.send(sendPacket); // It's thread safe
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
