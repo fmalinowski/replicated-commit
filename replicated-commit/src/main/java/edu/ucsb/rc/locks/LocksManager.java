@@ -36,7 +36,7 @@ public class LocksManager {
 		DataObjectLock lock;
 		if (this.locks.containsKey(key)) {
 			lock = this.locks.get(key);
-			if (lock.lockType == LockType.SHARED_LOCK && lock.serverTransactionId == serverTransactionId) {
+			if (lock.lockType == LockType.SHARED_LOCK && lock.serverTransactionId.equals(serverTransactionId)) {
 				return true;
 			}
 			return false;
@@ -55,7 +55,7 @@ public class LocksManager {
 		DataObjectLock lock;
 		if (this.locks.containsKey(key)) {
 			lock = this.locks.get(key);
-			if (lock.serverTransactionId == serverTransactionId) {
+			if (lock.serverTransactionId.equals(serverTransactionId)) {
 				lock.lockType = LockType.EXCLUSIVE_LOCK;
 				return true;
 			}
@@ -85,7 +85,7 @@ public class LocksManager {
 		DataObjectLock lock;
 		if (this.locks.containsKey(key)) {
 			lock = this.locks.get(key);
-			return lock.serverTransactionId == serverTransactionId ? true : false; 
+			return lock.serverTransactionId.equals(serverTransactionId) ? true : false; 
 		}
 		return false;
 	}
@@ -97,7 +97,7 @@ public class LocksManager {
 		DataObjectLock lock;
 		if (this.locks.containsKey(key)) {
 			lock = this.locks.get(key);
-			if (lock.serverTransactionId == serverTransactionId) {
+			if (lock.serverTransactionId.equals(serverTransactionId)) {
 				this.locks.remove(key);
 				return true;
 			}
@@ -111,6 +111,10 @@ public class LocksManager {
 	 */
 	public synchronized boolean checkSharedLocksAreStillAcquiredForTxn(Transaction t) {
 		ArrayList<Operation> readSet = t.getReadSet();
+		
+		if (readSet == null) {
+			return true;
+		}
 		
 		for (Operation readOp : readSet) {
 			if (!this.isLockedByTransaction(readOp.getKey(), t.getServerTransactionId())) {
@@ -126,6 +130,10 @@ public class LocksManager {
 	 */
 	public boolean acquireExclusiveLocksForTxn(Transaction t) {
 		ArrayList<Operation> writeSet = t.getWriteSet();
+		
+		if (writeSet == null) {
+			return true;
+		}
 		
 		for (Operation writeOp : writeSet) {
 			if (!this.addExclusiveLock(writeOp.getKey(), t.getServerTransactionId())) {
@@ -143,6 +151,10 @@ public class LocksManager {
 		this.removeAllSharedLocksForTxn(t);
 		ArrayList<Operation> writeSet = t.getWriteSet();
 		
+		if (writeSet == null) {
+			return;
+		}
+		
 		for (Operation writeOp : writeSet) {
 			this.removeLock(writeOp.getKey(), t.getServerTransactionId());
 		}
@@ -154,6 +166,10 @@ public class LocksManager {
 	 */
 	public void removeAllSharedLocksForTxn(Transaction t) {
 		ArrayList<Operation> readSet = t.getReadSet();
+		
+		if (readSet == null) {
+			return;
+		}
 		
 		for (Operation readOp : readSet) {
 			this.removeLock(readOp.getKey(), t.getServerTransactionId());
