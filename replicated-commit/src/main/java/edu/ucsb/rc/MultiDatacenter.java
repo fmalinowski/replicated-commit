@@ -5,13 +5,14 @@ import java.util.Collection;
 import java.util.HashMap;
 
 import edu.ucsb.rc.network.NetworkHandler;
+import edu.ucsb.rc.network.NetworkHandlerInterface;
 
 public class MultiDatacenter {
 	private static MultiDatacenter _instance;
 	private HashMap<Integer, Datacenter> datacenters;
 	private Datacenter currentDatacenter;
 	private Shard currentShard;
-	private NetworkHandler networkHandler;
+	private NetworkHandlerInterface networkHandler;
 	
 	private MultiDatacenter() {
 		this.datacenters = new HashMap<Integer, Datacenter>();
@@ -62,11 +63,11 @@ public class MultiDatacenter {
 		return this.currentShard;
 	}
 	
-	public NetworkHandler getNetworkHandler() {
+	public NetworkHandlerInterface getNetworkHandler() {
 		return this.networkHandler;
 	}
 	
-	public void setNetworkHandler(NetworkHandler networkHandler) {
+	public void setNetworkHandler(NetworkHandlerInterface networkHandler) {
 		this.networkHandler = networkHandler;
 	}
 	
