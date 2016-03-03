@@ -10,7 +10,7 @@ import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.Shard;
 import edu.ucsb.rc.transactions.Transaction;
 
-public class NetworkHandler {
+public class NetworkHandler implements NetworkHandlerInterface {
 	private int shardsPort;
 	private ShardsNetworkListener shardsNetworkListener;
 	private ClientsNetworkListener clientsNetworkListener;

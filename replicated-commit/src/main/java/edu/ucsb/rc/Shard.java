@@ -8,6 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import edu.ucsb.rc.locks.LocksManager;
 import edu.ucsb.rc.network.Message;
 import edu.ucsb.rc.network.NetworkHandler;
+import edu.ucsb.rc.network.NetworkHandlerInterface;
 import edu.ucsb.rc.protocols.PaxosAcceptsManager;
 import edu.ucsb.rc.protocols.TwoPhaseCommitManager;
 import edu.ucsb.rc.transactions.Operation;
@@ -60,7 +61,7 @@ public class Shard {
 		
 		ArrayList<Operation> readSet = t.getReadSet();
 		boolean allSharedLocksAcquired = true;
-		NetworkHandler networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
+		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
 		Message messageForClient = new Message();
 		
 		for (Operation op : readSet) {
@@ -95,7 +96,7 @@ public class Shard {
 	public void handlePaxosAcceptRequest(Transaction t) {
 		// Handle a PAXOS Accept request coming from client
 		
-		NetworkHandler networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
+		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
 		
 		Message messageForShards = new Message();
 		messageForShards.setShardIdOfSender(this.getShardID());
@@ -220,7 +221,7 @@ public class Shard {
 		messageForShardSender.setShardIdOfSender(this.shardID);
 		messageForShardSender.setTransaction(t);
 		
-		NetworkHandler networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
+		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
 		networkHandler.sendMessageToShard(shard, messageForShardSender);
 	}
 	
@@ -230,7 +231,7 @@ public class Shard {
 		messageForClient.setShardIdOfSender(this.shardID);
 		messageForClient.setTransaction(t);
 		
-		NetworkHandler networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
+		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
 		networkHandler.sendMessageToClient(t, messageForClient);
 	}
 }
