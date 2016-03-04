@@ -1,6 +1,7 @@
 package edu.ucsb.rc.network;
 
 import java.net.DatagramPacket;
+import java.io.*;
 
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.transactions.Transaction;
@@ -11,8 +12,8 @@ public class ClientNetworkWorker implements Runnable {
 	public ClientNetworkWorker(DatagramPacket packet) {
 		this.packet = packet;
 	}
-
-	public void run() {
+ 
+	/*public void run() {
 		byte[] receivedBytes;
 		Message messageFromClient;
 		
@@ -31,7 +32,31 @@ public class ClientNetworkWorker implements Runnable {
 		if (messageFromClient.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST) {
 			multiDatacenter.getCurrentShard().handlePaxosAcceptRequest(transaction);
 		}
+	}*/
+
+
+	
+
+		public void run() {
+		byte[] receivedBytes;
+		Message messageFromClient;
+
+		BufferedWriter bw;
+		try {
+			bw = new BufferedWriter(new FileWriter("output.txt", true));
+			bw.write("............RUN METHOD CALLED BY THE CLIENT...........");
+
+			receivedBytes = this.packet.getData();
+			messageFromClient = Message.deserialize(receivedBytes);
+
+	        bw.write("----------------------"+messageFromClient.toString()+"--------------------");
+	        bw.close();
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+		}		
 	}
+
 	
 	private void setServerTransactionId(DatagramPacket packet, Transaction transaction) {		
 		String clientIpAddress = packet.getAddress().getHostAddress();

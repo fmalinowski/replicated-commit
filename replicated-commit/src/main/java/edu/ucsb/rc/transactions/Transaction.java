@@ -4,6 +4,15 @@ import java.io.Serializable;
 import java.util.ArrayList;
 
 public class Transaction implements Serializable {
+	@Override
+	public String toString() {
+		return "Transaction [clientTransactionID=" + clientTransactionID
+				+ ", serverTransactionId=" + serverTransactionId
+				+ ", clientIpAddress=" + clientIpAddress + ", clientPort="
+				+ clientPort + ", readSet=" + readSet + ", writeSet="
+				+ writeSet + "]";
+	}
+
 	private static final long serialVersionUID = 4547150326687933596L;
 	
 	private long clientTransactionID;

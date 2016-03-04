@@ -11,6 +11,12 @@ import java.io.Serializable;
 import edu.ucsb.rc.transactions.Transaction;
 
 public class Message implements Serializable {
+	@Override
+	public String toString() {
+		return "Message [messageType=" + messageType + ", transaction="
+				+ transaction + ", shardIdOfSender=" + shardIdOfSender + "]";
+	}
+
 	private static final long serialVersionUID = -2505050279340559507L;
 	
 	public enum MessageType {
@@ -33,6 +39,10 @@ public class Message implements Serializable {
 	// We will use this class to send messages over the network for clients and shards
 	// All the objects that are contained in this class and that we want to send over the network
 	// needs to implements Serializable !
+	
+	
+	
+	
 	
 	public byte[] serialize() {
 		ByteArrayOutputStream bos;

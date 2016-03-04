@@ -4,6 +4,12 @@ import java.io.Serializable;
 import java.util.HashMap;
 
 public class Operation implements Serializable {
+	@Override
+	public String toString() {
+		return "Operation [type=" + type + ", key=" + key + ", columnValues="
+				+ columnValues + ", timestamp=" + timestamp + "]";
+	}
+
 	private static final long serialVersionUID = 5935230338799222569L;
 
 	public enum Type {
