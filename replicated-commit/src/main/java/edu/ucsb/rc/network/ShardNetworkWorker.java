@@ -4,7 +4,8 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
 import edu.ucsb.rc.MultiDatacenter;
-import edu.ucsb.rc.transactions.Transaction;
+import edu.ucsb.rc.model.Message;
+import edu.ucsb.rc.model.Transaction;
 
 public class ShardNetworkWorker implements Runnable {
 	private DatagramSocket serverSocket = null;

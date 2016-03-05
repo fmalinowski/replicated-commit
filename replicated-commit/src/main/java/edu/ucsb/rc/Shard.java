@@ -6,13 +6,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import edu.ucsb.rc.locks.LocksManager;
-import edu.ucsb.rc.network.Message;
+import edu.ucsb.rc.model.Message;
+import edu.ucsb.rc.model.Operation;
+import edu.ucsb.rc.model.Transaction;
 import edu.ucsb.rc.network.NetworkHandler;
 import edu.ucsb.rc.network.NetworkHandlerInterface;
 import edu.ucsb.rc.protocols.PaxosAcceptsManager;
 import edu.ucsb.rc.protocols.TwoPhaseCommitManager;
-import edu.ucsb.rc.transactions.Operation;
-import edu.ucsb.rc.transactions.Transaction;
 
 public class Shard {
 	private int shardID;

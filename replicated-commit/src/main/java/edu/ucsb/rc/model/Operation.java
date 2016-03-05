@@ -1,4 +1,4 @@
-package edu.ucsb.rc.transactions;
+package edu.ucsb.rc.model;
 
 import java.io.Serializable;
 import java.util.HashMap;
