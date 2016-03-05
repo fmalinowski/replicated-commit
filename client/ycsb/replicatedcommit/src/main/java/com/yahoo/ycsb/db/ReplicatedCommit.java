@@ -54,6 +54,7 @@ public class ReplicatedCommit extends DB {
 	private HashMap<String, String> ipMap;
 	private HashMap<String, Integer> portMap;
 
+	
 	public ReplicatedCommit() {
 
 		ipMap = new HashMap<String, String>(DATA_CENTER_SIZE);
