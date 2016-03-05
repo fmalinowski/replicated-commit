@@ -1,6 +1,5 @@
 package com.yahoo.ycsb.db;
 
-import static com.yahoo.ycsb.Status.ERROR;
 import static com.yahoo.ycsb.Status.NOT_IMPLEMENTED;
 import static com.yahoo.ycsb.Status.OK;
 import static edu.ucsb.rc.model.Message.MessageType.PAXOS__ACCEPT_REQUEST;
@@ -24,9 +23,15 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Logger;
 
-import com.yahoo.ycsb.*;
-import edu.ucsb.rc.model.*;
+import com.yahoo.ycsb.ByteIterator;
+import com.yahoo.ycsb.DB;
+import com.yahoo.ycsb.DBException;
+import com.yahoo.ycsb.Status;
+
+import edu.ucsb.rc.model.Message;
 import edu.ucsb.rc.model.Message.MessageType;
+import edu.ucsb.rc.model.Operation;
+import edu.ucsb.rc.model.Transaction;
 
 public class ReplicatedCommit extends DB {
 
@@ -56,26 +61,9 @@ public class ReplicatedCommit extends DB {
 
 		LOGGER = Logger.getLogger(CLASS_NAME);
 		randomGenerator = new Random();
+
 		String configFilePath = "config.properties";
-
-		try {
-			FileInputStream file = new FileInputStream(configFilePath);
-			properties = new Properties();
-			properties.load(file);
-			file.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}	
-
-		portMap.put("Port1",
-				Integer.parseInt(properties.getProperty("DC0-Shard1Port")));
-		portMap.put("Port2",
-				Integer.parseInt(properties.getProperty("DC1-Shard1Port")));
-		portMap.put("Port3",
-				Integer.parseInt(properties.getProperty("DC2-Shard1Port")));
-		ipMap.put("IP1", properties.getProperty("DC0-Shard1"));
-		ipMap.put("IP2", properties.getProperty("DC1-Shard1"));
-		ipMap.put("IP3", properties.getProperty("DC2-Shard1"));
+		setPropertiesFromConfigFile(configFilePath);
 
 	}
 
@@ -83,7 +71,7 @@ public class ReplicatedCommit extends DB {
 	public void init() throws DBException {
 
 		transactionId = randomGenerator.nextLong();
-		currentWriteSet = new ArrayList<Operation>();
+		
 
 		try {
 			ycsbSocket = new DatagramSocket();
@@ -92,7 +80,7 @@ public class ReplicatedCommit extends DB {
 			e.printStackTrace();
 		}
 
-		LOGGER.info("------Init method---Thread"
+		LOGGER.info("------Init method---Thread "
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 
@@ -100,7 +88,7 @@ public class ReplicatedCommit extends DB {
 
 	@Override
 	public void cleanup() throws DBException {
-		LOGGER.info("------CleanUp method---Thread"
+		LOGGER.info("------CleanUp method---Thread "
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 	}
@@ -108,10 +96,11 @@ public class ReplicatedCommit extends DB {
 	@Override
 	public void start() throws DBException {
 
-		LOGGER.info("------Start method---Thread"
+		LOGGER.info("------Start method---Thread "
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 		currentTransaction = new Transaction();
+		currentWriteSet = new ArrayList<Operation>();
 		currentTransaction.setTransactionIdDefinedByClient(transactionId);
 		transactionId++;
 	}
@@ -128,22 +117,26 @@ public class ReplicatedCommit extends DB {
 
 			send(message);
 
-			// boolean status = receive();
-			// if (status) {
-			// LOGGER.info("Commit was successful");
-			// }
+			boolean status = receive(PAXOS__ACCEPT_REQUEST_ACCEPTED, "COMMIT");
+			if (status) {
+				LOGGER.info("------Commit was sucessful ---Thread "
+						+ Thread.currentThread().getId()
+						+ " ---Transaction Id " + transactionId
+						+ "Current Write Set " + currentWriteSet.size());
+			} else {
+				LOGGER.info("------Commit failed---Thread "
+						+ Thread.currentThread().getId()
+						+ " ---Transaction Id " + transactionId
+						+ "Current Write Set " + currentWriteSet.size());
+			}
 		}
-
-		LOGGER.info("------Commit method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId + "Current Write Set " + currentWriteSet.size());
-
+		
 	}
 
 	@Override
 	public void abort() throws DBException {
 
-		LOGGER.info("------Abort method---Thread"
+		LOGGER.info("------Abort method---Thread "
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 
@@ -153,9 +146,43 @@ public class ReplicatedCommit extends DB {
 	public Status read(String table, String key, Set<String> fields,
 			HashMap<String, ByteIterator> result) {
 
-		LOGGER.info("------Read method---Thread"
+		LOGGER.info("------Read method---Thread "
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
+
+		Message message = createReadMessage(key, fields);
+
+		send(message);
+		boolean status = receive(READ_ANSWER, "READ");
+
+		if (status) {
+			LOGGER.info("------Read was sucessful ---Thread "
+					+ Thread.currentThread().getId() + " ---Transaction Id "
+					+ transactionId + "Current Write Set "
+					+ currentWriteSet.size());
+		} else {
+			LOGGER.info("------Commit failed---Thread "
+					+ Thread.currentThread().getId() + " ---Transaction Id "
+					+ transactionId + "Current Write Set "
+					+ currentWriteSet.size());
+		}
+
+		// Read value should be the latest timestamp
+		// Update the read set in the current transaction
+
+		// ArrayList<Operation> currentReadSet =
+		// currentTransaction.getReadSet();
+		// if(currentReadSet ==null)
+		// currentReadSet = new ArrayList<Operation>();
+
+		// currentReadSet.add(readOperation);
+		// readOperation.setColumnValues(columnValues);
+		// currentTransaction.setReadSet(currentReadSet);
+
+		return OK;
+	}
+
+	private Message createReadMessage(String key, Set<String> fields) {
 
 		Message message = new Message();
 		Operation readOperation = new Operation();
@@ -163,43 +190,33 @@ public class ReplicatedCommit extends DB {
 		Transaction readTransaction = new Transaction();
 
 		message.setMessageType(READ_REQUEST);
+
 		readOperation.setKey(key);
-		// Assume only full reads
-		// readOperation.setColumnValues(columnValues);
+		readOperation.setColumnValues(getHashMapOfFields(fields));
 		readOperation.setType(READ);
+
 		readSet.add(readOperation);
 		readTransaction.setReadSet(readSet);
+
 		message.setTransaction(readTransaction);
 
-		// Also look for read timestamps/versions
-		send(message);
-
-		// Commented on March 03
-		/*
-		 * receive();
-		 * 
-		 * Result r = null; for (KeyValue kv : r.raw()) {
-		 * 
-		 * result.put(Bytes.toString(kv.getQualifier()), new
-		 * ByteArrayByteIterator(kv.getValue())); }
-		 */
-		// Read value should be the latest timestamp
-		// Update the read set in the current transaction
-		
-
-
-		//ArrayList<Operation> currentReadSet = currentTransaction.getReadSet();
-		//if(currentReadSet ==null)
-			//currentReadSet = new ArrayList<Operation>();
-
-		//currentReadSet.add(readOperation);
-		// readOperation.setColumnValues(columnValues);
-		//currentTransaction.setReadSet(currentReadSet);
-
-		return OK;
+		return message;
 	}
 
-	private boolean receive() {
+	private HashMap<String, String> getHashMapOfFields(Set<String> fields) {
+
+		HashMap<String, String> maps = new HashMap<String, String>(
+				fields.size());
+
+		for (String field : fields) {
+			maps.put(field, "");
+		}
+
+		return maps;
+	}
+
+	private boolean receive(MessageType expectedMessageType, String mode) {
+
 		int counter = DATA_CENTER_SIZE;
 		int totalAcceptedResponses = 0;
 		while (counter > 0) {
@@ -214,9 +231,19 @@ public class ReplicatedCommit extends DB {
 			packet = new DatagramPacket(buffer, buffer.length);
 
 			try {
+
 				ycsbSocket.receive(packet);
-				totalAcceptedResponses += processPacket(packet);
+				byte[] receivedBytes = packet.getData();
+				Message messageFromCoordinators = Message
+						.deserialize(receivedBytes);
+
+				totalAcceptedResponses += processMessage(
+						messageFromCoordinators, expectedMessageType);
+				if ("READ".equals(mode)) {
+					processReadMessage(messageFromCoordinators);
+				}
 				counter--;
+
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -226,18 +253,38 @@ public class ReplicatedCommit extends DB {
 
 	}
 
-	private int processPacket(DatagramPacket packet) {
+	private void processReadMessage(Message message) {
 
-		byte[] receivedBytes = packet.getData();
-		Message messageFromCoordinators = Message.deserialize(receivedBytes);
-		MessageType messageType = messageFromCoordinators != null ? messageFromCoordinators
-				.getMessageType() : READ_FAILED;
-		if (messageType == PAXOS__ACCEPT_REQUEST_ACCEPTED
-				|| messageType == READ_ANSWER) {
-			return 1;
+		Transaction transaction = message.getTransaction();
+		if (transaction != null) {
+			ArrayList<Operation> readSet = transaction.getReadSet();
+			if (readSet != null) {
+				for (Operation operation : readSet) {
+					String key = operation.getKey();
+					HashMap<String, String> columnValues = operation.getColumnValues();
+					
+				}
+			}
 		}
 
-		return 0;
+	}
+
+	private int processMessage(Message messageFromCoordinators,
+			MessageType expectedMessageType) {
+
+		MessageType messageType = messageFromCoordinators != null ? messageFromCoordinators
+				.getMessageType() : READ_FAILED;
+		int returnValue = 0;
+		if (messageType == expectedMessageType) {
+
+			returnValue = 1;
+		}
+
+		LOGGER.info("------Received " + messageType + "  ---Thread "
+				+ Thread.currentThread().getId() + " ---Transaction Id "
+				+ transactionId);
+
+		return returnValue;
 	}
 
 	private void send(Message message) {
@@ -251,18 +298,29 @@ public class ReplicatedCommit extends DB {
 
 	}
 
-	private Properties getCoordinatorProperties(String configFilePath) {
-		FileInputStream file;
-		Properties properties = new Properties();
-		try {
-			file = new FileInputStream(configFilePath);
+	private void setPropertiesFromConfigFile(String configFilePath) {
 
+		Properties properties = new Properties();
+
+		try {
+			FileInputStream file = new FileInputStream(configFilePath);
+			properties = new Properties();
 			properties.load(file);
 			file.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return properties;
+
+		portMap.put("Port1",
+				Integer.parseInt(properties.getProperty("DC0-Shard1Port")));
+		portMap.put("Port2",
+				Integer.parseInt(properties.getProperty("DC1-Shard1Port")));
+		portMap.put("Port3",
+				Integer.parseInt(properties.getProperty("DC2-Shard1Port")));
+		ipMap.put("IP1", properties.getProperty("DC0-Shard1"));
+		ipMap.put("IP2", properties.getProperty("DC1-Shard1"));
+		ipMap.put("IP3", properties.getProperty("DC2-Shard1"));
+
 	}
 
 	private int[] getCoordinatorPorts(Properties properties) {
@@ -290,7 +348,7 @@ public class ReplicatedCommit extends DB {
 			Message message) {
 
 		try {
-			DatagramSocket socket = new DatagramSocket(portNumber);
+			DatagramSocket socket = new DatagramSocket();
 			InetAddress clientAddress = InetAddress.getByName(ipAddress);
 			byte[] bytesToSend = message.serialize();
 
