@@ -13,10 +13,10 @@ import org.powermock.api.easymock.PowerMock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import edu.ucsb.rc.network.Message;
+import edu.ucsb.rc.model.Message;
+import edu.ucsb.rc.model.Operation;
+import edu.ucsb.rc.model.Transaction;
 import edu.ucsb.rc.network.NetworkHandler;
-import edu.ucsb.rc.transactions.Operation;
-import edu.ucsb.rc.transactions.Transaction;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({Shard.class, Datastore.class})

@@ -3,7 +3,8 @@ package edu.ucsb.rc.network;
 import java.net.DatagramPacket;
 
 import edu.ucsb.rc.MultiDatacenter;
-import edu.ucsb.rc.transactions.Transaction;
+import edu.ucsb.rc.model.Message;
+import edu.ucsb.rc.model.Transaction;
 
 public class ClientNetworkWorker implements Runnable {
 	private DatagramPacket packet;

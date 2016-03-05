@@ -6,7 +6,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import edu.ucsb.rc.transactions.Transaction;
+import edu.ucsb.rc.model.Transaction;
 
 public class PaxosAcceptsManagerTest {
 

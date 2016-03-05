@@ -8,7 +8,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.Shard;
-import edu.ucsb.rc.transactions.Transaction;
+import edu.ucsb.rc.model.Message;
+import edu.ucsb.rc.model.Transaction;
 
 public class NetworkHandler implements NetworkHandlerInterface {
 	private int shardsPort;

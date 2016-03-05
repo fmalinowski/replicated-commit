@@ -2,7 +2,7 @@ package edu.ucsb.rc.protocols;
 
 import java.util.HashMap;
 
-import edu.ucsb.rc.transactions.Transaction;
+import edu.ucsb.rc.model.Transaction;
 
 public class TwoPhaseCommitManager {
 	private HashMap<String, Integer> twoPCacceptedRequestsMap;
