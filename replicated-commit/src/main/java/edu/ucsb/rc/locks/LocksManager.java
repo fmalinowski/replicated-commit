@@ -3,8 +3,8 @@ package edu.ucsb.rc.locks;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import edu.ucsb.rc.transactions.Operation;
-import edu.ucsb.rc.transactions.Transaction;
+import edu.ucsb.rc.model.Operation;
+import edu.ucsb.rc.model.Transaction;
 
 public class LocksManager {
 	public enum LockType {

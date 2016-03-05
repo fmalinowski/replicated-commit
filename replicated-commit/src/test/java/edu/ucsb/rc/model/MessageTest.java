@@ -1,4 +1,4 @@
-package edu.ucsb.rc.network;
+package edu.ucsb.rc.model;
 
 import static org.junit.Assert.*;
 
@@ -9,9 +9,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import edu.ucsb.rc.network.Message;
-import edu.ucsb.rc.transactions.Operation;
-import edu.ucsb.rc.transactions.Transaction;
+import edu.ucsb.rc.model.Message;
+import edu.ucsb.rc.model.Operation;
+import edu.ucsb.rc.model.Transaction;
 
 public class MessageTest {
 

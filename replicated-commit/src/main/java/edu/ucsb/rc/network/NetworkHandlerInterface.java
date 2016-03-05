@@ -1,7 +1,8 @@
 package edu.ucsb.rc.network;
 
 import edu.ucsb.rc.Shard;
-import edu.ucsb.rc.transactions.Transaction;
+import edu.ucsb.rc.model.Message;
+import edu.ucsb.rc.model.Transaction;
 
 public interface NetworkHandlerInterface {
 

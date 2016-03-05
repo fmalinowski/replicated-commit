@@ -1,4 +1,4 @@
-package edu.ucsb.rc.network;
+package edu.ucsb.rc.model;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -7,8 +7,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-
-import edu.ucsb.rc.transactions.Transaction;
 
 public class Message implements Serializable {
 	private static final long serialVersionUID = -2505050279340559507L;
