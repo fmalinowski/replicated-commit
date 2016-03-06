@@ -118,8 +118,20 @@ public class DatacenterTest {
 	}
 
 	@Test
-	public void testGetShardIdForKey() {
+	public void testGetShardIdForKey() throws Exception {
 		Datacenter dc = new Datacenter();
+		
+		Shard shard0 = new Shard();
+		Shard shard1 = new Shard();
+		Shard shard2 = new Shard();
+		
+		shard0.setShardID(0);
+		shard1.setShardID(1);
+		shard2.setShardID(2);
+		
+		dc.addShard(shard0);
+		dc.addShard(shard1);
+		dc.addShard(shard2);
 		
 		assertEquals(1, dc.getShardIdForKey("a"));
 		assertEquals(2, dc.getShardIdForKey("b"));
