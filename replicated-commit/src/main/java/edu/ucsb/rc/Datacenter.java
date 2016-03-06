@@ -48,6 +48,6 @@ public class Datacenter {
 	}
 	
 	public int getShardIdForKey(String key) {
-		return key.hashCode() % 3;
+		return key.hashCode() % this.shards.size();
 	}
 }
