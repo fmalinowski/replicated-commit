@@ -4,24 +4,18 @@ import static com.yahoo.ycsb.Status.ERROR;
 import static com.yahoo.ycsb.Status.NOT_IMPLEMENTED;
 import static com.yahoo.ycsb.Status.OK;
 import static com.yahoo.ycsb.Status.SERVICE_UNAVAILABLE;
+import static com.yahoo.ycsb.Status.UNEXPECTED_STATE;
 import static edu.ucsb.rc.model.Message.MessageType.PAXOS__ACCEPT_REQUEST;
 import static edu.ucsb.rc.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED;
 import static edu.ucsb.rc.model.Message.MessageType.READ_ANSWER;
-import static edu.ucsb.rc.model.Message.MessageType.READ_FAILED;
 import static edu.ucsb.rc.model.Message.MessageType.READ_REQUEST;
 import static edu.ucsb.rc.model.Operation.Type.READ;
 import static edu.ucsb.rc.model.Operation.Type.WRITE;
 
-import java.io.FileInputStream;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
@@ -50,7 +44,6 @@ public class ReplicatedCommit extends DB {
 
 	private ArrayList<Operation> currentWriteSet;
 	private Random randomGenerator;
-	private HashMap<String, ByteIterator> readResult;
 	private NetworkUtils networkUtils;
 
 	public ReplicatedCommit() {
@@ -86,7 +79,6 @@ public class ReplicatedCommit extends DB {
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 
-		readResult = null;
 		currentTransaction = new Transaction();
 		currentWriteSet = new ArrayList<Operation>();
 		currentTransaction.setTransactionIdDefinedByClient(transactionId);
@@ -99,7 +91,7 @@ public class ReplicatedCommit extends DB {
 			HashMap<String, ByteIterator> result) {
 
 		Status returnValue = ERROR;
-		
+
 		LOGGER.info("------Read method---Thread "
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId + " \n Read Key= " + key + " Fields size = "
@@ -113,36 +105,127 @@ public class ReplicatedCommit extends DB {
 		List<Message> messagesReceived = networkUtils.receiveFromCoordinators();
 
 		if (areMessagesNotEmpty(messagesReceived)) {
-			
+
 			LOGGER.info("------Read was sucessful ---Thread "
 					+ Thread.currentThread().getId() + " ---Transaction Id "
 					+ transactionId + "Current Write Set "
 					+ currentWriteSet.size());
-			
-			// Read value should be the latest timestamp
-			// Update the read set in the current transaction
 
-			// ArrayList<Operation> currentReadSet =
-			// currentTransaction.getReadSet();
-			// if(currentReadSet ==null)
-			// currentReadSet = new ArrayList<Operation>();
+			if (messagesReceived.size() <= 3) {
 
-			// currentReadSet.add(readOperation);
-			// readOperation.setColumnValues(columnValues);
-			// currentTransaction.setReadSet(currentReadSet);
-			
+				if (isMaximumQuorum(messagesReceived, READ_ANSWER)) {
+
+					result = extractResult(messagesReceived);
+					returnValue = OK;
+
+				} else {
+					returnValue = ERROR;
+				}
+
+			} else {
+
+				LOGGER.info("Too many messages received at the client end!");
+				returnValue = UNEXPECTED_STATE;
+			}
+
 			returnValue = OK;
+
 		} else {
-			
+
 			LOGGER.info("------Read failed---Thread "
 					+ Thread.currentThread().getId() + " ---Transaction Id "
 					+ transactionId + "Current Write Set "
 					+ currentWriteSet.size());
-			
+
 			returnValue = SERVICE_UNAVAILABLE;
 		}
 
 		return returnValue;
+	}
+
+	private boolean isMaximumQuorum(List<Message> messagesReceived,
+			MessageType messageType) {
+
+		int count = 0;
+		for (Message message : messagesReceived) {
+			if (messageType == message.getMessageType()) {
+				count++;
+			}
+		}
+
+		if (count >= ACCEPTANCE_CRITERIA) {
+			return true;
+		}
+		return false;
+	}
+
+	private HashMap<String, ByteIterator> extractResult(
+			List<Message> messagesReceived) {
+
+		HashMap<String, ByteIterator> byteMap = new HashMap<String, ByteIterator>();
+		ArrayList<Operation> finalReadSet = new ArrayList<Operation>();
+		long latestTimestamp = 0;
+
+		// TODO Refactor this method
+
+		for (Message receivedMessage : messagesReceived) {
+
+			Transaction transaction = receivedMessage.getTransaction();
+			if (transaction != null) {
+
+				ArrayList<Operation> readSet = transaction.getReadSet();
+
+				if (readSet != null) {
+					for (Operation operation : readSet) {
+
+						long timestamp = operation.getTimestamp();
+
+						if (timestamp > latestTimestamp
+								&& operation.getColumnValues() != null) {
+							latestTimestamp = timestamp;
+
+							HashMap<String, String> columnMap = operation
+									.getColumnValues();
+
+							Set<Entry<String, String>> columnMapEntries = columnMap
+									.entrySet();
+							for (Entry<String, String> entry : columnMapEntries) {
+								// Overwriting
+								byteMap.put(entry.getKey(),
+										new ByteArrayByteIterator(entry
+												.getValue().getBytes()));
+							}
+
+							// Repeated #op number of times
+							finalReadSet = readSet;
+						}
+
+					}
+				} else {
+					LOGGER.info("Received an empty Read Set");
+				}
+			} else {
+				LOGGER.info("Received dummy transaction!!");
+			}
+		}
+
+		// Why do we need this again?
+		updateCurrentReadSet(finalReadSet);
+
+		return byteMap;
+	}
+
+	private void updateCurrentReadSet(ArrayList<Operation> finalReadSet) {
+
+		ArrayList<Operation> currentReadSet = currentTransaction.getReadSet();
+		if (currentReadSet == null) {
+			currentReadSet = finalReadSet;
+		} else {
+			currentReadSet.addAll(finalReadSet);
+		}
+
+		// Dont think this statement is needed
+		currentTransaction.setReadSet(currentReadSet);
 	}
 
 	private Message createReadRequestMessage(String key, Set<String> fields) {
@@ -172,57 +255,11 @@ public class ReplicatedCommit extends DB {
 				fields.size());
 
 		for (String field : fields) {
+			// Values are stored by the server
 			maps.put(field, "");
 		}
 
 		return maps;
-	}
-
-	private HashMap<String, ByteIterator> processReadMessage(Message message) {
-
-		Transaction transaction = message.getTransaction();
-		HashMap<String, ByteIterator> byteMap = new HashMap<String, ByteIterator>();
-
-		if (transaction != null) {
-			ArrayList<Operation> readSet = transaction.getReadSet();
-			if (readSet != null) {
-				for (Operation operation : readSet) {
-
-					String key = operation.getKey();
-					long timestamp = operation.getTimestamp();
-					HashMap<String, String> columnValues = operation
-							.getColumnValues();
-
-					Set<Entry<String, String>> stringMap = columnValues
-							.entrySet();
-					for (Entry<String, String> entry : stringMap) {
-						byteMap.put(entry.getKey(), new ByteArrayByteIterator(
-								entry.getValue().getBytes()));
-					}
-
-				}
-			}
-		}
-		return byteMap;
-
-	}
-
-	private int processMessage(Message messageFromCoordinators,
-			MessageType expectedMessageType) {
-
-		MessageType messageType = messageFromCoordinators != null ? messageFromCoordinators
-				.getMessageType() : READ_FAILED;
-		int returnValue = 0;
-		if (messageType == expectedMessageType) {
-
-			returnValue = 1;
-		}
-
-		LOGGER.info("------Received " + messageType + "  ---Thread "
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
-
-		return returnValue;
 	}
 
 	@Override
@@ -241,9 +278,9 @@ public class ReplicatedCommit extends DB {
 					.receiveFromCoordinators();
 
 			// What should you do if the commit was a failure?
-			if (areMessagesNotEmpty(messagesReceived)) {
-
-				processCommitResponse(messagesReceived);
+			if (areMessagesNotEmpty(messagesReceived)
+					&& isMaximumQuorum(messagesReceived,
+							PAXOS__ACCEPT_REQUEST_ACCEPTED)) {
 
 				LOGGER.info("------Commit was sucessful ---Thread "
 						+ Thread.currentThread().getId()
@@ -263,11 +300,6 @@ public class ReplicatedCommit extends DB {
 
 	private boolean areMessagesNotEmpty(List<Message> messagesReceived) {
 		return messagesReceived != null && !messagesReceived.isEmpty();
-	}
-
-	private void processCommitResponse(List<Message> messagesReceived) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
@@ -298,10 +330,12 @@ public class ReplicatedCommit extends DB {
 				+ transactionId);
 
 		Operation writeOperation = new Operation();
+
 		writeOperation.setKey(key);
 		writeOperation.setType(WRITE);
-		// Convert the Byte Iterator to String
-		// writeOperation.setColumnValues(values);
+		writeOperation
+				.setColumnValues(convertByteIteratorMapToStringMap(values));
+
 		currentWriteSet.add(writeOperation);
 
 		return OK;
@@ -316,14 +350,31 @@ public class ReplicatedCommit extends DB {
 				+ transactionId);
 
 		Operation writeOperation = new Operation();
+
 		writeOperation.setKey(key);
 		writeOperation.setType(WRITE);
-		// Convert the Byte Iterator to String
-		// writeOperation.setColumnValues(values);
+		writeOperation
+				.setColumnValues(convertByteIteratorMapToStringMap(values));
+
 		currentWriteSet.add(writeOperation);
 
 		return OK;
 
+	}
+
+	private HashMap<String, String> convertByteIteratorMapToStringMap(
+			HashMap<String, ByteIterator> byteMap) {
+		if (byteMap == null)
+			return null;
+
+		HashMap<String, String> returnMap = new HashMap<String, String>(
+				byteMap.size());
+		Set<Entry<String, ByteIterator>> entrySet = byteMap.entrySet();
+		for (Entry<String, ByteIterator> entry : entrySet) {
+			returnMap.put(entry.getKey(), entry.getValue().toString());
+		}
+
+		return returnMap;
 	}
 
 	@Override
