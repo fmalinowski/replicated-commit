@@ -17,12 +17,15 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Logger;
 
+import com.yahoo.ycsb.ByteArrayByteIterator;
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
@@ -53,8 +56,8 @@ public class ReplicatedCommit extends DB {
 
 	private HashMap<String, String> ipMap;
 	private HashMap<String, Integer> portMap;
+	private HashMap<String, ByteIterator> readResult;
 
-	
 	public ReplicatedCommit() {
 
 		ipMap = new HashMap<String, String>(DATA_CENTER_SIZE);
@@ -72,7 +75,6 @@ public class ReplicatedCommit extends DB {
 	public void init() throws DBException {
 
 		transactionId = randomGenerator.nextLong();
-		
 
 		try {
 			ycsbSocket = new DatagramSocket();
@@ -119,6 +121,8 @@ public class ReplicatedCommit extends DB {
 			send(message);
 
 			boolean status = receive(PAXOS__ACCEPT_REQUEST_ACCEPTED, "COMMIT");
+
+			// What should you do if the commit was a failure?
 			if (status) {
 				LOGGER.info("------Commit was sucessful ---Thread "
 						+ Thread.currentThread().getId()
@@ -131,7 +135,7 @@ public class ReplicatedCommit extends DB {
 						+ "Current Write Set " + currentWriteSet.size());
 			}
 		}
-		
+
 	}
 
 	@Override
@@ -147,9 +151,12 @@ public class ReplicatedCommit extends DB {
 	public Status read(String table, String key, Set<String> fields,
 			HashMap<String, ByteIterator> result) {
 
+		readResult = null;
+		
 		LOGGER.info("------Read method---Thread "
 				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+				+ transactionId + " \n Read Key= " + key + " Fields size = "
+				+ fields.size());
 
 		Message message = createReadMessage(key, fields);
 
@@ -254,19 +261,32 @@ public class ReplicatedCommit extends DB {
 
 	}
 
-	private void processReadMessage(Message message) {
+	private HashMap<String, ByteIterator> processReadMessage(Message message) {
 
 		Transaction transaction = message.getTransaction();
+		HashMap<String, ByteIterator> byteMap = new HashMap<String, ByteIterator>();
+
 		if (transaction != null) {
 			ArrayList<Operation> readSet = transaction.getReadSet();
 			if (readSet != null) {
 				for (Operation operation : readSet) {
+
 					String key = operation.getKey();
-					HashMap<String, String> columnValues = operation.getColumnValues();
-					
+					long timestamp = operation.getTimestamp();
+					HashMap<String, String> columnValues = operation
+							.getColumnValues();
+
+					Set<Entry<String, String>> stringMap = columnValues
+							.entrySet();
+					for (Entry<String, String> entry : stringMap) {
+						byteMap.put(entry.getKey(), new ByteArrayByteIterator(
+								entry.getValue().getBytes()));
+					}
+
 				}
 			}
 		}
+		return byteMap;
 
 	}
 
