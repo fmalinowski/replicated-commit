@@ -89,6 +89,8 @@ public class NetworkUtils {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			
+			counter--;
 		}
 
 		return messagesReceived;
