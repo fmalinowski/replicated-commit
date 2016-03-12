@@ -34,6 +34,11 @@ public class NetworkUtils {
 
 		LOGGER = Logger.getLogger(CLASS_NAME);
 		setPropertiesFromConfigFile(configFilePath);
+		try {
+			ycsbSocket = new DatagramSocket();
+		} catch (Exception e) {
+
+		}
 	}
 
 	public void sendMessageToCoordinators(Message message) {
@@ -74,6 +79,7 @@ public class NetworkUtils {
 		List<Message> messagesReceived = new ArrayList<Message>();
 		
 		//Implement a timeout if necessary
+		System.out.println("Receiving ...");
 
 		while (counter > 0) {
 
@@ -82,14 +88,17 @@ public class NetworkUtils {
 
 			try {
 
+				ycsbSocket.setSoTimeout(5000);
 				ycsbSocket.receive(packet);
+				ycsbSocket.setSoTimeout(0);
+				
 				byte[] receivedBytes = packet.getData();
 				messagesReceived.add(Message.deserialize(receivedBytes));
 
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			
+				
 			counter--;
 		}
 
