@@ -30,12 +30,10 @@ public class HBaseDAO {
 	public HBaseDAO() {
 		System.out.println("Connecting to HBase Server ...");
 		config = HBaseConfiguration.create();
-		config.set("hbase.zookeeper.quorum", "127.0.0.1");
-		config.set("hbase.zookeeper.property.clientPort", "2181");
-		config.set("hbase.master", "127.0.0.1:60010");
+		
 		try {
 			HBaseAdmin.checkHBaseAvailable(config);
-			System.out.println("Conncted to HBase Server ..");
+			System.out.println("Connected to HBase Server ..");
 
 		} catch (MasterNotRunningException e) {
 			System.out.println("HBase Master is not running..");
