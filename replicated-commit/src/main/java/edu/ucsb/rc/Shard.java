@@ -24,6 +24,7 @@ public class Shard {
 	private LocksManager locksManager;
 	private TwoPhaseCommitManager twoPCmanager;
 	private PaxosAcceptsManager paxosAcceptsManager;
+	private CommitLogger commitLogger;
 	
 	public Shard() {
 		this.locksManager = new LocksManager();
@@ -33,6 +34,7 @@ public class Shard {
 	public void initializeShard() {
 		this.twoPCmanager = new TwoPhaseCommitManager(this.datacenter.getShards().size());
 		this.paxosAcceptsManager = new PaxosAcceptsManager(MultiDatacenter.getInstance().getDatacenters().size());
+		this.commitLogger = new CommitLogger();
 	}
 	
 	public String getIpAddress() {
@@ -212,6 +214,7 @@ public class Shard {
 		
 		this.locksManager.removeAllLocksForTxn(t);
 		// Transaction is officially committed in this shard!!!
+		this.commitLogger.logCommit(t);
 	}
 	
 	public boolean operationKeyBelongsToCurrentChard(Operation op) {
