@@ -3,13 +3,6 @@ package com.yahoo.ycsb.db;
 import static com.yahoo.ycsb.Status.ERROR;
 import static com.yahoo.ycsb.Status.NOT_IMPLEMENTED;
 import static com.yahoo.ycsb.Status.OK;
-import static edu.ucsb.rc.model.Message.MessageType.PAXOS__ACCEPT_REQUEST;
-import static edu.ucsb.rc.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED;
-import static edu.ucsb.rc.model.Message.MessageType.READ_ANSWER;
-import static edu.ucsb.rc.model.Message.MessageType.READ_FAILED;
-import static edu.ucsb.rc.model.Message.MessageType.READ_REQUEST;
-import static edu.ucsb.rc.model.Operation.Type.READ;
-import static edu.ucsb.rc.model.Operation.Type.WRITE;
 
 import java.io.FileInputStream;
 import java.net.DatagramPacket;
@@ -27,7 +20,6 @@ import java.util.logging.Logger;
 import com.yahoo.ycsb.*;
 
 import edu.ucsb.rc.model.*;
-import edu.ucsb.rc.model.Message.MessageType;
 
 public class ReplicatedCommit extends DB {
 
@@ -56,6 +48,7 @@ public class ReplicatedCommit extends DB {
 	public ReplicatedCommit() {
 		LOGGER = Logger.getLogger(CLASS_NAME);
 		randomGenerator = new Random();
+		this.ipMap = new HashMap<Integer, String>();
 		
 		readConfigFileAndInitialize();
 	}
@@ -193,7 +186,7 @@ public class ReplicatedCommit extends DB {
 		currentTransaction.setWriteSet(currentWriteSet);
 		
 		message = new Message();
-		message.setMessageType(PAXOS__ACCEPT_REQUEST);
+		message.setMessageType(Message.MessageType.PAXOS__ACCEPT_REQUEST);
 		message.setTransaction(currentTransaction);
 		
 		coordinatorShardId = this.getCoordinatorShardID();
@@ -272,8 +265,6 @@ public class ReplicatedCommit extends DB {
 	
 	public void readConfigFileAndInitialize() {
 		String configFilePath = "config.properties";
-		
-		int currentDatacenterID, currentShardID;
 		String shardIPAddress;
 		
 		FileInputStream file;
