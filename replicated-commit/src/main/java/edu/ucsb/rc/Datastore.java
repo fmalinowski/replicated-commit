@@ -2,10 +2,13 @@ package edu.ucsb.rc;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.logging.Logger;
 
 import edu.ucsb.rc.dao.HBaseDAO;
 
 public class Datastore {
+	private final static Logger LOGGER = Logger.getLogger(Datastore.class.getName());
+	
 	private static Datastore _instance = null;
 	private HBaseDAO hbaseDao;
 	private final String table = "usertable";
@@ -40,6 +43,8 @@ public class Datastore {
 	public long read(String key, HashMap<String, String> columnValues) {		
 		// We need to return the timestamp of the last update of that row in HBase
 		
+		LOGGER.info("Reading key:" + key);
+		
 		try {
 			return this.hbaseDao.getValuesOfOneRecord(this.table, key, this.columnFamily, columnValues);
 		} catch (IOException e) {
@@ -53,6 +58,8 @@ public class Datastore {
 	 *  The keys of the HashMap represent the name of the columns 
 	 */
 	public void write(String key, HashMap<String, String> columnValues) {
+		LOGGER.info("Writing to key:" + key);
+		
 		try {
 			this.hbaseDao.addRecordWithSeveralQualifiers(this.table, key, this.columnFamily, columnValues);
 		} catch (Exception e) {

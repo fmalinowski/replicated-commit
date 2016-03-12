@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Logger;
 
 import edu.ucsb.rc.locks.LocksManager;
 import edu.ucsb.rc.model.Message;
@@ -15,6 +16,8 @@ import edu.ucsb.rc.protocols.PaxosAcceptsManager;
 import edu.ucsb.rc.protocols.TwoPhaseCommitManager;
 
 public class Shard {
+	private final static Logger LOGGER = Logger.getLogger(Shard.class.getName());
+	
 	private int shardID;
 	private String ipAddress;
 	private Datacenter datacenter = null;
@@ -221,6 +224,8 @@ public class Shard {
 		messageForShardSender.setShardIdOfSender(this.shardID);
 		messageForShardSender.setTransaction(t);
 		
+		LOGGER.info("Send the messageType:" + messageType + " to shardID:" + shard.getShardID() + " of datacenterID:" + shard.getDatacenter().getDatacenterID() + " | serverTransactionID:" + t.getServerTransactionId());
+		
 		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
 		networkHandler.sendMessageToShard(shard, messageForShardSender);
 	}
@@ -230,6 +235,8 @@ public class Shard {
 		messageForClient.setMessageType(messageType);
 		messageForClient.setShardIdOfSender(this.shardID);
 		messageForClient.setTransaction(t);
+		
+		LOGGER.info("Send to client the messageType:" + messageType + " | clientTransactionID:" + t.getTransactionIdDefinedByClient() + " | serverTransactionID:" + t.getServerTransactionId());
 		
 		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
 		networkHandler.sendMessageToClient(t, messageForClient);
