@@ -1,12 +1,15 @@
 package edu.ucsb.rc.network;
 
 import java.net.DatagramPacket;
+import java.util.logging.Logger;
 
+import edu.ucsb.rc.App;
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.model.Message;
 import edu.ucsb.rc.model.Transaction;
 
 public class ClientNetworkWorker implements Runnable {
+	private final static Logger LOGGER = Logger.getLogger(ClientNetworkWorker.class.getName()); 
 	private DatagramPacket packet;
 	
 	public ClientNetworkWorker(DatagramPacket packet) {
@@ -27,9 +30,11 @@ public class ClientNetworkWorker implements Runnable {
 		setServerTransactionId(this.packet, transaction);
 		
 		if (messageFromClient.getMessageType() == Message.MessageType.READ_REQUEST) {
+			LOGGER.info("Received READ_REQUEST from client. clientTransactionID:" + transaction.getTransactionIdDefinedByClient() + " | serverTransactionID:" + transaction.getServerTransactionId());
 			multiDatacenter.getCurrentShard().handleReadRequestFromClient(transaction);
 		}
 		if (messageFromClient.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST) {
+			LOGGER.info("Received PAXOS__ACCEPT_REQUEST from client. clientTransactionID:" + transaction.getTransactionIdDefinedByClient() + " | serverTransactionID:" + transaction.getServerTransactionId());
 			multiDatacenter.getCurrentShard().handlePaxosAcceptRequest(transaction);
 		}
 	}
