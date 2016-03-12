@@ -40,13 +40,15 @@ public class CommitLogger {
 	public void logCommit(Transaction t) {
 		String commitLine;
 		ArrayList<Operation> writeSet = t.getWriteSet();
+		int shardIdHoldingData;
 		
 		commitLine = "Commit txn:" + t.getServerTransactionId() + " ||| Writing objects: ";
 		
 		for (Operation writeOp : writeSet) {
 			commitLine += writeOp.getKey();
 			
-			if (writeOp.getShardIdHoldingData() == MultiDatacenter.getInstance().getCurrentShard().getShardID()) {
+			shardIdHoldingData = MultiDatacenter.getInstance().getCurrentDatacenter().getShardIdForKey(writeOp.getKey());
+			if (shardIdHoldingData == MultiDatacenter.getInstance().getCurrentShard().getShardID()) {
 				commitLine += " (cs)";
 			}
 			
