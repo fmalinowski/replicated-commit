@@ -196,6 +196,11 @@ public class ReplicatedCommit extends DB {
 			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
 			
 			this.sendMessageToShard(message, coordinatorShardIp);
+		}
+		
+		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
+			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
+			
 			answerFromShard = this.receiveMessageFromShards();
 			
 			if (answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
@@ -206,7 +211,7 @@ public class ReplicatedCommit extends DB {
 				LOGGER.info("------Commit method---Thread"
 						+ Thread.currentThread().getId() + " ---Transaction Id "
 						+ transactionId
-						+ " --- GOT WRONG MESSAGE - PROBLEM!");
+						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType());
 				return;
 			}
 		}
@@ -339,8 +344,10 @@ public class ReplicatedCommit extends DB {
 		readOperation.setKey(key);
 		readOperation.setColumnValues(fieldsMap);
 		
-		for (String field : fields) {
-			fieldsMap.put(field, "");
+		if (fields != null) {
+			for (String field : fields) {
+				fieldsMap.put(field, "");
+			}
 		}
 		return readOperation;
 	}
@@ -386,7 +393,7 @@ public class ReplicatedCommit extends DB {
 				LOGGER.info("------sendReadRequestToShards---Thread"
 						+ Thread.currentThread().getId() + " ---Transaction Id "
 						+ transactionId
-						+ " --- GOT WRONG MESSAGE - PROBLEM!");
+						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType());
 				return null;
 			}
 		}

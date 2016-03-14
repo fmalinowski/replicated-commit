@@ -169,14 +169,27 @@ public class HBaseDAO {
 		Result rs = table.get(get);
 		
 		Set<String> keys = qualifierValues.keySet();
-		for (String key : keys) {
-			KeyValue valueForKey = rs.getColumnLatest(family.getBytes(), key.getBytes());
-			qualifierValues.put(key, new String(valueForKey.getValue()));
-			
-			long timestampOfQualifier = valueForKey.getTimestamp();
-			
-			if (timestampOfQualifier > mostRecentTimestamp) {
-				mostRecentTimestamp = timestampOfQualifier;
+		
+		if (keys.size() == 0) {
+			for(KeyValue keyValue : rs.list()) {
+				qualifierValues.put(keyValue.getKeyString(), Bytes.toString(keyValue.getValue()));
+				
+				long timestampOfQualifier = keyValue.getTimestamp();
+				
+				if (timestampOfQualifier > mostRecentTimestamp) {
+					mostRecentTimestamp = timestampOfQualifier;
+				}
+		    }
+		} else {
+			for (String key : keys) {
+				KeyValue valueForKey = rs.getColumnLatest(family.getBytes(), key.getBytes());
+				qualifierValues.put(key, new String(valueForKey.getValue()));
+				
+				long timestampOfQualifier = valueForKey.getTimestamp();
+				
+				if (timestampOfQualifier > mostRecentTimestamp) {
+					mostRecentTimestamp = timestampOfQualifier;
+				}
 			}
 		}
 		table.close();
