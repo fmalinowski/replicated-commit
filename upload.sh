@@ -2,7 +2,7 @@
 
 datacenters=3
 shards=3
-servers=(128.111.84.181 128.111.84.239 128.111.84.214 128.111.84.175 128.111.84.231 128.111.84.194 128.111.84.205 128.111.84.211 128.111.84.209)
+servers=(128.111.84.160 128.111.84.169 128.111.84.186 128.111.84.206 128.111.84.212 128.111.84.216 128.111.84.228 128.111.84.229 128.111.84.249)
 currentPEMfileLocation="/Users/fmalinowski/Downloads/ReplicatedCommit.pem"
 currentJarFileLoc="./replicated-commit/target/replicated-commit-1.0-SNAPSHOT-jar-with-dependencies.jar"
 currentHBASEconfigLoc="./hbase-site.xml"
@@ -53,7 +53,7 @@ do
 	echo "Installing Java 1.7 and HBase - shard ${currentShard} of datacenter ${currentDatacenter}"
 	$(scp -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} jdk-7u79-linux-i586.tar.gz root@${server}:/opt/)
 	$(scp -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} hbase-1.0.3-bin.tar.gz root@${server}:~/)
-	$(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'cd /opt/; tar xzf jdk-7u79-linux-i586.tar.gz; export JAVA_HOME=/opt/jdk1.7.0_79; export PATH=$PATH:/opt/jdk1.7.0_79/bin:/opt/jdk1.7.0_79/jre/bin; export JRE_HOME=/opt/jdk1.7.0_79/jre; cd ~/; tar xfz hbase-1.0.3-bin.tar.gz; echo "127.0.0.1  'hostname'" > /etc/hosts;')
+	$(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'cd /opt/; tar xzf jdk-7u79-linux-i586.tar.gz; export JAVA_HOME=/opt/jdk1.7.0_79; export PATH=$PATH:/opt/jdk1.7.0_79/bin:/opt/jdk1.7.0_79/jre/bin; export JRE_HOME=/opt/jdk1.7.0_79/jre; cd ~/; tar xfz hbase-1.0.3-bin.tar.gz;')
 
 	echo "Upload replicated commit app - shard ${currentShard} of datacenter ${currentDatacenter}"
 	$(scp -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} ${currentJarFileLoc} root@${server}:~/replicated-commit.jar)
