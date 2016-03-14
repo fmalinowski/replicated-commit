@@ -21,7 +21,9 @@ public class ClientNetworkWorker implements Runnable {
 		Message messageFromClient;
 		
 		receivedBytes = this.packet.getData();
+		LOGGER.info("Got a message");
 		messageFromClient = Message.deserialize(receivedBytes);
+		LOGGER.info("Got this message type:" + messageFromClient.getMessageType());
 		
 		// We handle the message received from the client here  
 		MultiDatacenter multiDatacenter = MultiDatacenter.getInstance();

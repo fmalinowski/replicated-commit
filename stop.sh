@@ -9,5 +9,5 @@ $(chmod 600 $currentPEMfileLocation)
 
 for server in ${servers[@]}
 do
-	$(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'export JAVA_HOME=/opt/jdk1.7.0_79; kill -9 `cat save_pid.txt`; ./hbase-1.0.3/bin/stop-hbase.sh;')
+	$(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'export JAVA_HOME=/opt/jdk1.7.0_79; export PATH=$PATH:/opt/jdk1.7.0_79/bin:/opt/jdk1.7.0_79/jre/bin; export JRE_HOME=/opt/jdk1.7.0_79/jre; kill -9 `cat save_pid.txt`; ./hbase-1.0.3/bin/stop-hbase.sh > /dev/null;')
 done

@@ -55,7 +55,7 @@ public class ReplicatedCommit extends DB {
 
 	@Override
 	public void init() throws DBException {
-		transactionId = randomGenerator.nextLong();
+		transactionId = (long) 1;
 
 		try {
 			this.socket = new DatagramSocket();
@@ -79,13 +79,12 @@ public class ReplicatedCommit extends DB {
 
 	@Override
 	public void start() throws DBException {
-
+		transactionId++;
 		LOGGER.info("------Start method---Thread"
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 		currentTransaction = new Transaction();
 		currentTransaction.setTransactionIdDefinedByClient(transactionId);
-		transactionId++;
 		
 		currentReadSet = new ArrayList<Operation>();
 		currentWriteSet = new ArrayList<Operation>();
@@ -196,7 +195,13 @@ public class ReplicatedCommit extends DB {
 		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
 			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
 			
+			LOGGER.info("------Commit method---Thread"
+					+ Thread.currentThread().getId() + " ---Transaction Id "
+					+ transactionId + "sendingMessageToShard");
 			this.sendMessageToShard(message, coordinatorShardIp);
+			LOGGER.info("------Commit method---Thread"
+					+ Thread.currentThread().getId() + " ---Transaction Id "
+					+ transactionId + "waiting for answer from shard " + coordinatorShardId + " in DC " + datacenterID + " | IP: " + coordinatorShardIp);
 			answerFromShard = this.receiveMessageFromShards();
 			
 			if (answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
@@ -406,6 +411,8 @@ public class ReplicatedCommit extends DB {
 			clientAddress = InetAddress.getByName(shardIpAddress);
 			byte[] bytesToSend = message.serialize();
 				
+			LOGGER.info("-- sending to " + clientAddress + " to port " + this.shardPort);
+			
 			DatagramPacket sendPacket = new DatagramPacket(bytesToSend, bytesToSend.length, 
 					clientAddress, this.shardPort);
 					
@@ -446,6 +453,7 @@ public class ReplicatedCommit extends DB {
 	}
 	
 	public int getCoordinatorShardID() {
-		return (new Random()).nextInt(this.shardsPerDatacenter);
+//		return (new Random()).nextInt(this.shardsPerDatacenter);
+		return 0;
 	}
 }
