@@ -3,63 +3,68 @@ package com.yahoo.ycsb.db;
 import static com.yahoo.ycsb.Status.ERROR;
 import static com.yahoo.ycsb.Status.NOT_IMPLEMENTED;
 import static com.yahoo.ycsb.Status.OK;
-import static com.yahoo.ycsb.Status.SERVICE_UNAVAILABLE;
-import static com.yahoo.ycsb.Status.UNEXPECTED_STATE;
-import static edu.ucsb.rc.model.Message.MessageType.PAXOS__ACCEPT_REQUEST;
-import static edu.ucsb.rc.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED;
-import static edu.ucsb.rc.model.Message.MessageType.READ_ANSWER;
-import static edu.ucsb.rc.model.Message.MessageType.READ_REQUEST;
-import static edu.ucsb.rc.model.Operation.Type.READ;
-import static edu.ucsb.rc.model.Operation.Type.WRITE;
 
+import java.io.FileInputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Logger;
 
-import com.yahoo.ycsb.ByteArrayByteIterator;
-import com.yahoo.ycsb.ByteIterator;
-import com.yahoo.ycsb.DB;
-import com.yahoo.ycsb.DBException;
-import com.yahoo.ycsb.Status;
+import com.yahoo.ycsb.*;
 
-import edu.ucsb.rc.model.Message;
-import edu.ucsb.rc.model.Message.MessageType;
-import edu.ucsb.rc.model.Operation;
-import edu.ucsb.rc.model.Transaction;
+import edu.ucsb.rc.model.*;
 
 public class ReplicatedCommit extends DB {
 
 	private Transaction currentTransaction;
 	private Long transactionId;
-	private final Logger LOGGER;
 
-	private static final int DATA_CENTER_SIZE = 3;
-	private static final int ACCEPTANCE_CRITERIA = 2;
+	private final Logger LOGGER;
+	
+	private int datacentersNumber;
+	private int shardsPerDatacenter;
+	private int acceptanceCriteria;
+	private int shardPort;
+	private HashMap<Integer, String> ipMap;
+	private DatagramSocket socket;
+	
+	private int abortedTransactions = 0;
+	private int commitedTransactions = 0;
+
+	private static final int BUFFER_SIZE = 65507;
 	private static final String CLASS_NAME = ReplicatedCommit.class.getName();
 
+	private ArrayList<Operation> currentReadSet;
 	private ArrayList<Operation> currentWriteSet;
 	private Random randomGenerator;
-	private NetworkUtils networkUtils;
 
 	public ReplicatedCommit() {
-
 		LOGGER = Logger.getLogger(CLASS_NAME);
 		randomGenerator = new Random();
-		networkUtils = new NetworkUtils(DATA_CENTER_SIZE);
-
+		this.ipMap = new HashMap<Integer, String>();
+		
+		readConfigFileAndInitialize();
 	}
 
 	@Override
 	public void init() throws DBException {
+		transactionId = (long) 1;
 
-		transactionId = randomGenerator.nextLong();
+		try {
+			this.socket = new DatagramSocket();
 
-		LOGGER.info("------Init method---Thread "
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}
+
+		LOGGER.info("------Init method---Thread"
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 
@@ -67,245 +72,178 @@ public class ReplicatedCommit extends DB {
 
 	@Override
 	public void cleanup() throws DBException {
-		LOGGER.info("------CleanUp method---Thread "
+		LOGGER.info("------CleanUp method---Thread"
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 	}
 
 	@Override
 	public void start() throws DBException {
-
-		LOGGER.info("------Start method---Thread "
+		transactionId++;
+		LOGGER.info("------Start method---Thread"
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
-
 		currentTransaction = new Transaction();
-		currentWriteSet = new ArrayList<Operation>();
 		currentTransaction.setTransactionIdDefinedByClient(transactionId);
-
-		transactionId++;
+		
+		currentReadSet = new ArrayList<Operation>();
+		currentWriteSet = new ArrayList<Operation>();
+		currentTransaction.setReadSet(currentReadSet);
+		currentTransaction.setWriteSet(currentWriteSet);
 	}
-
+	
 	@Override
 	public Status read(String table, String key, Set<String> fields,
 			HashMap<String, ByteIterator> result) {
 
-		Status returnValue = ERROR;
-
-		LOGGER.info("------Read method---Thread "
+		LOGGER.info("------Read method---Thread"
 				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId + " \n Read Key= " + key + " Fields size = "
-				+ fields.size());
+				+ transactionId);
 
-		// Send Read Request
-		Message message = createReadRequestMessage(key, fields);
-		networkUtils.sendMessageToCoordinators(message);
-
-		// Receive Response
-		List<Message> messagesReceived = networkUtils.receiveFromCoordinators();
-
-		if (areMessagesNotEmpty(messagesReceived)) {
-
-			LOGGER.info("------Read was sucessful ---Thread "
-					+ Thread.currentThread().getId() + " ---Transaction Id "
-					+ transactionId + "Current Write Set "
-					+ currentWriteSet.size());
-
-			if (messagesReceived.size() <= 3) {
-
-				if (isMaximumQuorum(messagesReceived, READ_ANSWER)) {
-
-					result = extractResult(messagesReceived);
-					returnValue = OK;
-
-				} else {
-					returnValue = ERROR;
-				}
-
-			} else {
-
-				LOGGER.info("Too many messages received at the client end!");
-				returnValue = UNEXPECTED_STATE;
-			}
-
-			returnValue = OK;
-
-		} else {
-
-			LOGGER.info("------Read failed---Thread "
-					+ Thread.currentThread().getId() + " ---Transaction Id "
-					+ transactionId + "Current Write Set "
-					+ currentWriteSet.size());
-
-			returnValue = SERVICE_UNAVAILABLE;
-		}
-
-		return returnValue;
-	}
-
-	private boolean isMaximumQuorum(List<Message> messagesReceived,
-			MessageType messageType) {
-
-		int count = 0;
-		for (Message message : messagesReceived) {
-			if (messageType == message.getMessageType()) {
-				count++;
-			}
-		}
-
-		if (count >= ACCEPTANCE_CRITERIA) {
-			return true;
-		}
-		return false;
-	}
-
-	private HashMap<String, ByteIterator> extractResult(
-			List<Message> messagesReceived) {
-
-		HashMap<String, ByteIterator> byteMap = new HashMap<String, ByteIterator>();
-		ArrayList<Operation> finalReadSet = new ArrayList<Operation>();
-		long latestTimestamp = 0;
-
-		// TODO Refactor this method
-
-		for (Message receivedMessage : messagesReceived) {
-
-			Transaction transaction = receivedMessage.getTransaction();
-			if (transaction != null) {
-
-				ArrayList<Operation> readSet = transaction.getReadSet();
-
-				if (readSet != null) {
-					for (Operation operation : readSet) {
-
-						long timestamp = operation.getTimestamp();
-
-						if (timestamp > latestTimestamp
-								&& operation.getColumnValues() != null) {
-							latestTimestamp = timestamp;
-
-							HashMap<String, String> columnMap = operation
-									.getColumnValues();
-
-							Set<Entry<String, String>> columnMapEntries = columnMap
-									.entrySet();
-							for (Entry<String, String> entry : columnMapEntries) {
-								// Overwriting
-								byteMap.put(entry.getKey(),
-										new ByteArrayByteIterator(entry
-												.getValue().getBytes()));
-							}
-
-							// Repeated #op number of times
-							finalReadSet = readSet;
-						}
-
-					}
-				} else {
-					LOGGER.info("Received an empty Read Set");
-				}
-			} else {
-				LOGGER.info("Received dummy transaction!!");
-			}
-		}
-
-		// Why do we need this again?
-		updateCurrentReadSet(finalReadSet);
-
-		return byteMap;
-	}
-
-	private void updateCurrentReadSet(ArrayList<Operation> finalReadSet) {
-
-		ArrayList<Operation> currentReadSet = currentTransaction.getReadSet();
-		if (currentReadSet == null) {
-			currentReadSet = finalReadSet;
-		} else {
-			currentReadSet.addAll(finalReadSet);
-		}
-
-		// Dont think this statement is needed
-		currentTransaction.setReadSet(currentReadSet);
-	}
-
-	private Message createReadRequestMessage(String key, Set<String> fields) {
-
-		Message message = new Message();
-		Operation readOperation = new Operation();
-		ArrayList<Operation> readSet = new ArrayList<Operation>();
+		Operation readOperationAnswerFromServer;
+		
 		Transaction readTransaction = new Transaction();
-
-		message.setMessageType(READ_REQUEST);
-
-		readOperation.setKey(key);
-		readOperation.setColumnValues(getHashMapOfFields(fields));
-		readOperation.setType(READ);
-
-		readSet.add(readOperation);
+		readTransaction.setTransactionIdDefinedByClient(currentTransaction.getTransactionIdDefinedByClient());
+		
+		ArrayList<Operation> readSet = new ArrayList<Operation>();
 		readTransaction.setReadSet(readSet);
+		
+		Operation readOperation = new Operation();
+		readOperation = fillInReadOperation(key, fields);
+		readSet.add(readOperation);
+		
+		// Add read operation to current ReadSet of the current transaction that will be sent
+		// at commit time
+		currentReadSet.add(readOperation);
+		
+		readOperationAnswerFromServer = sendReadRequestToShards(readTransaction);
+		
+		if (readOperationAnswerFromServer == null) {
+			// Either the number of positive answers was not above acceptance criteria
+			// or we got a message that was not an answer for a read request
+			// We need to abort the transaction here!!
+			this.abortedTransactions++;
+			return Status.ERROR;
+		}
+		
+		convertReadValuesToYCSBformat(readOperationAnswerFromServer.getColumnValues(), result);
 
-		message.setTransaction(readTransaction);
+		return Status.OK;
+	}
+	
+	@Override
+	public Status update(String table, String key,
+			HashMap<String, ByteIterator> values) {
 
-		return message;
+		LOGGER.info("------Update method---Thread"
+				+ Thread.currentThread().getId() + " ---Transaction Id "
+				+ transactionId);
+
+		Operation writeOperation = new Operation();
+		HashMap<String, String> columnValues = new HashMap<String, String>();
+		writeOperation.setKey(key);
+		writeOperation.setType(Operation.Type.WRITE);
+		writeOperation.setColumnValues(columnValues);
+		
+		convertYCSBwriteValuesToInternalFormat(values, columnValues);
+		currentWriteSet.add(writeOperation);
+
+		return Status.OK;
 	}
 
-	private HashMap<String, String> getHashMapOfFields(Set<String> fields) {
+	@Override
+	public Status insert(String table, String key,
+			HashMap<String, ByteIterator> values) {
 
-		HashMap<String, String> maps = new HashMap<String, String>(
-				fields.size());
+		LOGGER.info("------Insert method---Thread"
+				+ Thread.currentThread().getId() + " ---Transaction Id "
+				+ transactionId);
 
-		for (String field : fields) {
-			// Values are stored by the server
-			maps.put(field, "");
-		}
+		Operation writeOperation = new Operation();
+		HashMap<String, String> columnValues = new HashMap<String, String>();
+		writeOperation.setKey(key);
+		writeOperation.setType(Operation.Type.WRITE);
+		writeOperation.setColumnValues(columnValues);
+		
+		convertYCSBwriteValuesToInternalFormat(values, columnValues);
+		currentWriteSet.add(writeOperation);
 
-		return maps;
+		return Status.OK;
+
 	}
 
 	@Override
 	public void commit() throws DBException {
-
-		if (currentTransaction != null) {
-
-			currentTransaction.setWriteSet(currentWriteSet);
-			Message message = new Message();
-			message.setMessageType(PAXOS__ACCEPT_REQUEST);
-			message.setTransaction(currentTransaction);
-
-			networkUtils.sendMessageToCoordinators(message);
-
-			List<Message> messagesReceived = networkUtils
-					.receiveFromCoordinators();
-
-			// What should you do if the commit was a failure?
-			if (areMessagesNotEmpty(messagesReceived)
-					&& isMaximumQuorum(messagesReceived,
-							PAXOS__ACCEPT_REQUEST_ACCEPTED)) {
-
-				LOGGER.info("------Commit was sucessful ---Thread "
-						+ Thread.currentThread().getId()
-						+ " ---Transaction Id " + transactionId
-						+ "Current Write Set " + currentWriteSet.size());
-			} else {
-				LOGGER.info("------Commit failed---Thread "
-						+ Thread.currentThread().getId()
-						+ " ---Transaction Id " + transactionId
-						+ "Current Write Set " + currentWriteSet.size());
-			}
-		} else {
-			LOGGER.info("There were no operations in the transaction to commit!! ");
+		int coordinatorShardId, acceptedPaxosRequests;
+		String coordinatorShardIp;
+		Message message, answerFromShard;
+		
+		if (currentTransaction == null) {
+			return;
 		}
+		
+		currentTransaction.setWriteSet(currentWriteSet);
+		
+		message = new Message();
+		message.setMessageType(Message.MessageType.PAXOS__ACCEPT_REQUEST);
+		message.setTransaction(currentTransaction);
+		
+		coordinatorShardId = this.getCoordinatorShardID();
+		
+		acceptedPaxosRequests = 0;
+		
+		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
+			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
+			
+			LOGGER.info("------Commit method---Thread"
+					+ Thread.currentThread().getId() + " ---Transaction Id "
+					+ transactionId + "sendingMessageToShard");
+			this.sendMessageToShard(message, coordinatorShardIp);
+			LOGGER.info("------Commit method---Thread"
+					+ Thread.currentThread().getId() + " ---Transaction Id "
+					+ transactionId + "waiting for answer from shard " + coordinatorShardId + " in DC " + datacenterID + " | IP: " + coordinatorShardIp);
+			answerFromShard = this.receiveMessageFromShards();
+			
+			if (answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
+				acceptedPaxosRequests++;
+			} else if (answerFromShard.getMessageType() != Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED) {
+				// There's a big problem here cause we received a message not related to our request
+				// Might be due response to another request...
+				LOGGER.info("------Commit method---Thread"
+						+ Thread.currentThread().getId() + " ---Transaction Id "
+						+ transactionId
+						+ " --- GOT WRONG MESSAGE - PROBLEM!");
+				return;
+			}
+		}
+		
+		String logString;
+		
+		if (acceptedPaxosRequests >= this.acceptanceCriteria) {
+			// Transaction has successfully committed
+			this.commitedTransactions++;
+			logString = "Commited Successfuly";
+		} else {
+			this.abortedTransactions++;
+			logString = "Txn Aborted";
+		}
+		
+		LOGGER.info("------Commit method---Thread"
+				+ Thread.currentThread().getId() + " ---Transaction Id "
+				+ transactionId + "Current Write Set " + currentWriteSet.size()
+				+ " - " + logString);
 
-	}
-
-	private boolean areMessagesNotEmpty(List<Message> messagesReceived) {
-		return messagesReceived != null && !messagesReceived.isEmpty();
+		double commitsPercentage = (double)this.commitedTransactions / (this.abortedTransactions + this.commitedTransactions) * 100;
+		LOGGER.info("++++ Summary ++++" 
+				+ "Commits: " + this.commitedTransactions
+				+ "Aborts: " + this.abortedTransactions
+				+ "commits %: " + commitsPercentage);
 	}
 
 	@Override
 	public void abort() throws DBException {
 
-		LOGGER.info("------Abort method---Thread "
+		LOGGER.info("------Abort method---Thread"
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 
@@ -322,67 +260,200 @@ public class ReplicatedCommit extends DB {
 	}
 
 	@Override
-	public Status update(String table, String key,
-			HashMap<String, ByteIterator> values) {
-
-		LOGGER.info("------Update method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
-
-		Operation writeOperation = new Operation();
-
-		writeOperation.setKey(key);
-		writeOperation.setType(WRITE);
-		writeOperation
-				.setColumnValues(convertByteIteratorMapToStringMap(values));
-
-		currentWriteSet.add(writeOperation);
-
-		return OK;
-	}
-
-	@Override
-	public Status insert(String table, String key,
-			HashMap<String, ByteIterator> values) {
-
-		LOGGER.info("------Insert method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
-
-		Operation writeOperation = new Operation();
-
-		writeOperation.setKey(key);
-		writeOperation.setType(WRITE);
-		writeOperation
-				.setColumnValues(convertByteIteratorMapToStringMap(values));
-
-		currentWriteSet.add(writeOperation);
-
-		return OK;
-
-	}
-
-	private HashMap<String, String> convertByteIteratorMapToStringMap(
-			HashMap<String, ByteIterator> byteMap) {
-		if (byteMap == null)
-			return null;
-
-		HashMap<String, String> returnMap = new HashMap<String, String>(
-				byteMap.size());
-		Set<Entry<String, ByteIterator>> entrySet = byteMap.entrySet();
-		for (Entry<String, ByteIterator> entry : entrySet) {
-			returnMap.put(entry.getKey(), entry.getValue().toString());
-		}
-
-		return returnMap;
-	}
-
-	@Override
 	public Status delete(String table, String key) {
 
 		LOGGER.info("------Delete method---Thread"
 				+ Thread.currentThread().getId() + " ---Transaction Id "
 				+ transactionId);
 		return NOT_IMPLEMENTED;
+	}
+	
+	public void readConfigFileAndInitialize() {
+		String configFilePath = "config.properties";
+		String shardIPAddress;
+		
+		FileInputStream file;
+		Properties properties = null;
+		
+		try {
+			file = new FileInputStream(configFilePath);
+			properties = new Properties();
+			properties.load(file);
+			file.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}	
+	
+		this.shardPort = Integer.parseInt(properties.getProperty("shardPort"));
+		this.setDatacentersNumber(Integer.parseInt(properties.getProperty("numberDatacenters")));
+		this.setShardsPerDatacenter(Integer.parseInt(properties.getProperty("numberShardsPerDatacenter")));
+		this.acceptanceCriteria = (int) Math.ceil((double)this.datacentersNumber/2);
+		
+		for (int datacenterID = 0; datacenterID < datacentersNumber; datacenterID++) {
+			for (int shardID = 0; shardID < shardsPerDatacenter; shardID++) {
+				shardIPAddress = properties.getProperty("DC" + datacenterID + "-Shard" + shardID);
+				this.setIpForShard(datacenterID, shardID, shardIPAddress);
+			}
+		}
+	}
+	
+	public int getDatacentersNumber() {
+		return this.datacentersNumber;
+	}
+	
+	public void setDatacentersNumber(int datacentersNumber) {
+		this.datacentersNumber = datacentersNumber;
+	}
+	
+	public int getShardsPerDatacenter() {
+		return this.shardsPerDatacenter;
+	}
+	
+	public void setShardsPerDatacenter(int shardsPerDatacenter) {
+		this.shardsPerDatacenter = shardsPerDatacenter;
+	}
+	
+	public void setIpForShard(int datacenterID, int shardID, String shardIpAddress) {
+		int indexOfShardInIpMap;
+		
+		indexOfShardInIpMap = datacenterID * this.getShardsPerDatacenter() + shardID;
+		this.ipMap.put(indexOfShardInIpMap, shardIpAddress);
+	}
+	
+	public String getIpForShard(int datacenterID, int shardID) {
+		int indexOfShardInIpMap;
+		
+		indexOfShardInIpMap = datacenterID * this.getShardsPerDatacenter() + shardID;
+		if (this.ipMap.containsKey(indexOfShardInIpMap)) {
+			return this.ipMap.get(indexOfShardInIpMap);
+		}
+		return null;
+	}
+	
+	public int getShardIdHoldingData(String key) {
+		if (key == null) {
+			return -1;
+		}
+		return (key.hashCode() % this.shardsPerDatacenter);
+	}
+	
+	public Operation fillInReadOperation(String key, Set<String> fields) {
+		Operation readOperation = new Operation();
+		HashMap<String, String> fieldsMap = new HashMap<String, String>();
+		
+		readOperation.setType(Operation.Type.READ);
+		readOperation.setKey(key);
+		readOperation.setColumnValues(fieldsMap);
+		
+		for (String field : fields) {
+			fieldsMap.put(field, "");
+		}
+		return readOperation;
+	}
+	
+	public Operation sendReadRequestToShards(Transaction readTransaction) {
+		String operationKey, shardIpAddress;
+		int shardIdHoldingData, positiveReadAnswers;
+		long mostRecentTimestamp;
+		Operation readOperationFromServer, bestReadOperationFromShards;
+		Message message, answerFromShard;
+		
+		operationKey = readTransaction.getReadSet().get(0).getKey();
+		shardIdHoldingData = this.getShardIdHoldingData(operationKey);
+		
+		message = new Message();
+		message.setMessageType(Message.MessageType.READ_REQUEST);
+		message.setTransaction(readTransaction);
+		
+		positiveReadAnswers = 0;
+		mostRecentTimestamp = 0;
+		bestReadOperationFromShards = null;
+		
+		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
+			shardIpAddress = this.getIpForShard(datacenterID, shardIdHoldingData);
+			
+			this.sendMessageToShard(message, shardIpAddress);
+			answerFromShard = receiveMessageFromShards();
+			
+			if (answerFromShard.getMessageType() == Message.MessageType.READ_ANSWER) {
+				positiveReadAnswers++;
+				readOperationFromServer = answerFromShard.getTransaction().getReadSet().get(0);
+				
+				if (readOperationFromServer.getTimestamp() >= mostRecentTimestamp) {
+					mostRecentTimestamp = readOperationFromServer.getTimestamp();
+					bestReadOperationFromShards = readOperationFromServer;
+				}
+				
+			} else if(answerFromShard.getMessageType() == Message.MessageType.READ_FAILED) {
+				// Nothing to do here I guess?
+			} else {
+				// Invalid response from server (we screwed up when listening to messages)
+				// That's bad!!!!
+				LOGGER.info("------sendReadRequestToShards---Thread"
+						+ Thread.currentThread().getId() + " ---Transaction Id "
+						+ transactionId
+						+ " --- GOT WRONG MESSAGE - PROBLEM!");
+				return null;
+			}
+		}
+		
+		if (positiveReadAnswers >= this.acceptanceCriteria) {
+			return bestReadOperationFromShards;
+		}
+		return null;
+	}
+	
+	public void sendMessageToShard(Message message, String shardIpAddress) {
+		// Send a message to a client
+		InetAddress clientAddress;
+				
+		try {
+			clientAddress = InetAddress.getByName(shardIpAddress);
+			byte[] bytesToSend = message.serialize();
+				
+			LOGGER.info("-- sending to " + clientAddress + " to port " + this.shardPort);
+			
+			DatagramPacket sendPacket = new DatagramPacket(bytesToSend, bytesToSend.length, 
+					clientAddress, this.shardPort);
+					
+			this.socket.send(sendPacket);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public Message receiveMessageFromShards() {
+		DatagramPacket packet;
+		byte[] buffer;
+		
+		buffer = new byte[BUFFER_SIZE];
+		packet = new DatagramPacket(buffer, buffer.length);
+
+		try {
+			this.socket.receive(packet);
+			
+			byte[] receivedBytes;
+			Message messageFromShard;
+			
+			receivedBytes = packet.getData();
+			messageFromShard = Message.deserialize(receivedBytes);
+			return messageFromShard;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public void convertReadValuesToYCSBformat(HashMap<String, String> readValues, HashMap<String, ByteIterator> ycsbReadValues) {
+		StringByteIterator.putAllAsByteIterators(ycsbReadValues, readValues);
+	}
+	
+	public void convertYCSBwriteValuesToInternalFormat(HashMap<String, ByteIterator> ycsbWriteValues, HashMap<String, String> writeValues) {
+		StringByteIterator.putAllAsStrings(writeValues, ycsbWriteValues);
+	}
+	
+	public int getCoordinatorShardID() {
+//		return (new Random()).nextInt(this.shardsPerDatacenter);
+		return 0;
 	}
 }
