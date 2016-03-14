@@ -6,9 +6,18 @@ servers=(128.111.84.217 128.111.84.169 128.111.84.186 128.111.84.206 128.111.84.
 currentPEMfileLocation="/Users/fmalinowski/Downloads/ReplicatedCommit.pem"
 
 $(chmod 600 $currentPEMfileLocation)
+currentServer=0
+
+mkdir commitLogs
 
 for server in ${servers[@]}
 do
-	echo "Stopping replicated commit server and HBase on ${server}"
-	$(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'export JAVA_HOME=/opt/jdk1.7.0_79; export PATH=$PATH:/opt/jdk1.7.0_79/bin:/opt/jdk1.7.0_79/jre/bin; export JRE_HOME=/opt/jdk1.7.0_79/jre; kill -9 `cat save_pid.txt`; ./hbase-1.0.3/bin/stop-hbase.sh > /dev/null;')
+	currentShard=$((currentServer%shards))
+	currentDatacenter=$(($currentServer / $shards))
+	currentServer=$((currentServer + 1))
+
+	commitLogFileName="DC${currentDatacenter}-Shard${currentShard}-commitLog.txt"
+
+	echo "Downloading commit log from ${server}."
+	$(scp -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server}:~/commitLog.txt  commitLogs/${commitLogFileName})
 done

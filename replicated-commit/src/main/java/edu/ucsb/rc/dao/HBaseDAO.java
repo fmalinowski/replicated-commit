@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -23,28 +24,29 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import edu.ucsb.rc.network.ShardNetworkWorker;
+
 public class HBaseDAO {
+	private final static Logger LOGGER = Logger.getLogger(HBaseDAO.class.getName());
 
 	private Configuration config;
 
 	public HBaseDAO() {
-		System.out.println("Connecting to HBase Server ...");
+		LOGGER.info("Connecting to HBase Server ...");
 		config = HBaseConfiguration.create();
 		
 		try {
 			HBaseAdmin.checkHBaseAvailable(config);
-			System.out.println("Connected to HBase Server ..");
+			LOGGER.info("Connected to HBase Server ...");
 
 		} catch (MasterNotRunningException e) {
-			System.out.println("HBase Master is not running..");
+			System.err.println("HBase Master is not running..");
 			e.printStackTrace();
 		} catch (ZooKeeperConnectionException e) {
-			System.out
-					.println("There was an issue with ZooKeeper connection..");
+			System.err.println("There was an issue with ZooKeeper connection..");
 			e.printStackTrace();
 		} catch (Exception e) {
-			System.out
-					.println("There was an issue connecting to HBase server..");
+			System.err.println("There was an issue connecting to HBase server..");
 			e.printStackTrace();
 		}
 
@@ -56,14 +58,14 @@ public class HBaseDAO {
 		HBaseAdmin admin = new HBaseAdmin(config);
 
 		if (admin.tableExists(tableName)) {
-			System.out.println("table already exists!");
+			LOGGER.info("Table already exists.");
 		} else {
 			HTableDescriptor tableDesc = new HTableDescriptor(tableName);
 			for (int i = 0; i < familys.length; i++) {
 				tableDesc.addFamily(new HColumnDescriptor(familys[i]));
 			}
 			admin.createTable(tableDesc);
-			System.out.println("create table " + tableName + " ok.");
+			LOGGER.info("Create table " + tableName + " ok.");
 		}
 
 		admin.close();
@@ -78,7 +80,7 @@ public class HBaseDAO {
 		try {
 			admin.disableTable(tableName);
 			admin.deleteTable(tableName);
-			System.out.println("delete table " + tableName + " ok.");
+			LOGGER.info("Delete table " + tableName + " ok.");
 		} catch (MasterNotRunningException e) {
 			e.printStackTrace();
 		} catch (ZooKeeperConnectionException e) {
@@ -99,7 +101,7 @@ public class HBaseDAO {
 			put.add(Bytes.toBytes(family), Bytes.toBytes(qualifier),
 					Bytes.toBytes(value));
 			table.put(put);
-			System.out.println("insert recored " + rowKey + " to table "
+			LOGGER.info("Insert record " + rowKey + " to table "
 					+ tableName + " ok.");
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -135,7 +137,8 @@ public class HBaseDAO {
 		Delete del = new Delete(rowKey.getBytes());
 		list.add(del);
 		table.delete(list);
-		System.out.println("del recored " + rowKey + " ok.");
+		LOGGER.info("Delete record " + rowKey + " from table "
+				+ tableName + " ok.");
 		table.close();
 	}
 
@@ -166,14 +169,27 @@ public class HBaseDAO {
 		Result rs = table.get(get);
 		
 		Set<String> keys = qualifierValues.keySet();
-		for (String key : keys) {
-			KeyValue valueForKey = rs.getColumnLatest(family.getBytes(), key.getBytes());
-			qualifierValues.put(key, new String(valueForKey.getValue()));
-			
-			long timestampOfQualifier = valueForKey.getTimestamp();
-			
-			if (timestampOfQualifier > mostRecentTimestamp) {
-				mostRecentTimestamp = timestampOfQualifier;
+		
+		if (keys.size() == 0) {
+			for(KeyValue keyValue : rs.list()) {
+				qualifierValues.put(keyValue.getKeyString(), Bytes.toString(keyValue.getValue()));
+				
+				long timestampOfQualifier = keyValue.getTimestamp();
+				
+				if (timestampOfQualifier > mostRecentTimestamp) {
+					mostRecentTimestamp = timestampOfQualifier;
+				}
+		    }
+		} else {
+			for (String key : keys) {
+				KeyValue valueForKey = rs.getColumnLatest(family.getBytes(), key.getBytes());
+				qualifierValues.put(key, new String(valueForKey.getValue()));
+				
+				long timestampOfQualifier = valueForKey.getTimestamp();
+				
+				if (timestampOfQualifier > mostRecentTimestamp) {
+					mostRecentTimestamp = timestampOfQualifier;
+				}
 			}
 		}
 		table.close();

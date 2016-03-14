@@ -13,3 +13,5 @@ buildNumber.properties
 
 # TMP Files
 *~
+
+commitLog.txt
