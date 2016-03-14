@@ -195,13 +195,7 @@ public class ReplicatedCommit extends DB {
 		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
 			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
 			
-			LOGGER.info("------Commit method---Thread"
-					+ Thread.currentThread().getId() + " ---Transaction Id "
-					+ transactionId + "sendingMessageToShard");
 			this.sendMessageToShard(message, coordinatorShardIp);
-			LOGGER.info("------Commit method---Thread"
-					+ Thread.currentThread().getId() + " ---Transaction Id "
-					+ transactionId + "waiting for answer from shard " + coordinatorShardId + " in DC " + datacenterID + " | IP: " + coordinatorShardIp);
 			answerFromShard = this.receiveMessageFromShards();
 			
 			if (answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
@@ -410,8 +404,6 @@ public class ReplicatedCommit extends DB {
 		try {
 			clientAddress = InetAddress.getByName(shardIpAddress);
 			byte[] bytesToSend = message.serialize();
-				
-			LOGGER.info("-- sending to " + clientAddress + " to port " + this.shardPort);
 			
 			DatagramPacket sendPacket = new DatagramPacket(bytesToSend, bytesToSend.length, 
 					clientAddress, this.shardPort);
@@ -453,7 +445,6 @@ public class ReplicatedCommit extends DB {
 	}
 	
 	public int getCoordinatorShardID() {
-//		return (new Random()).nextInt(this.shardsPerDatacenter);
-		return 0;
+		return (new Random()).nextInt(this.shardsPerDatacenter);
 	}
 }

@@ -10,7 +10,6 @@ import edu.ucsb.rc.model.Transaction;
 
 public class CommitLogger {
 	File logFile;
-	FileWriter fileWriter;
 	
 	public CommitLogger() {
 		this.logFile = new File("commitLog.txt");
@@ -28,12 +27,6 @@ public class CommitLogger {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-		}
-		
-		try {
-			this.fileWriter = new FileWriter(this.logFile);
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
 	}
 	
@@ -56,19 +49,15 @@ public class CommitLogger {
 		}
 		commitLine += "\n";
 		
+		FileWriter fileWriter;
 		try {
-			this.fileWriter.write(commitLine);
-			this.fileWriter.flush();
+			synchronized(this) {
+				fileWriter = new FileWriter(this.logFile, true);
+				fileWriter.write(commitLine);
+				fileWriter.close();
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
-	
-	public void closeLog() {
-		try {
-			this.fileWriter.close();
-		} catch (Exception e) {
-		}
-	}
-
 }

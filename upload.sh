@@ -2,7 +2,7 @@
 
 datacenters=3
 shards=3
-servers=(128.111.84.160 128.111.84.169 128.111.84.186 128.111.84.206 128.111.84.212 128.111.84.216 128.111.84.228 128.111.84.229 128.111.84.249)
+servers=(128.111.84.217 128.111.84.169 128.111.84.186 128.111.84.206 128.111.84.212 128.111.84.216 128.111.84.228 128.111.84.229 128.111.84.249)
 currentPEMfileLocation="/Users/fmalinowski/Downloads/ReplicatedCommit.pem"
 currentJarFileLoc="./replicated-commit/target/replicated-commit-1.0-SNAPSHOT-jar-with-dependencies.jar"
 currentHBASEconfigLoc="./hbase-site.xml"
@@ -53,7 +53,7 @@ do
 	echo "Installing Java 1.7 and HBase - shard ${currentShard} of datacenter ${currentDatacenter}"
 	$(scp -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} jdk-7u79-linux-i586.tar.gz root@${server}:/opt/)
 	$(scp -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} hbase-1.0.3-bin.tar.gz root@${server}:~/)
-	$(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'cd /opt/; tar xzf jdk-7u79-linux-i586.tar.gz; export JAVA_HOME=/opt/jdk1.7.0_79; export PATH=$PATH:/opt/jdk1.7.0_79/bin:/opt/jdk1.7.0_79/jre/bin; export JRE_HOME=/opt/jdk1.7.0_79/jre; cd ~/; tar xfz hbase-1.0.3-bin.tar.gz;')
+	$(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'cd /opt/; tar xzf jdk-7u79-linux-i586.tar.gz; export JAVA_HOME=/opt/jdk1.7.0_79; export PATH=$PATH:/opt/jdk1.7.0_79/bin:/opt/jdk1.7.0_79/jre/bin; export JRE_HOME=/opt/jdk1.7.0_79/jre; cd ~/; tar xfz hbase-1.0.3-bin.tar.gz; echo "127.0.0.1  'hostname'" >> /etc/hosts;')
 
 	echo "Upload replicated commit app - shard ${currentShard} of datacenter ${currentDatacenter}"
 	$(scp -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} ${currentJarFileLoc} root@${server}:~/replicated-commit.jar)
@@ -61,6 +61,7 @@ do
 	$(scp -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} ${finalTmpConfigFile} root@${server}:~/config.properties)
 	echo "Upload hbase config file - shard ${currentShard} of datacenter ${currentDatacenter}"
 	$(scp -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} ${currentHBASEconfigLoc} root@${server}:~/hbase-1.0.3/conf/hbase-site.xml)
+	echo ""
 done
 
 rm -f $tmpConfigFile
