@@ -55,7 +55,7 @@ public class ReplicatedCommit extends DB {
 
 	@Override
 	public void init() throws DBException {
-		transactionId = (long) 1;
+		transactionId = randomGenerator.nextLong();
 
 		try {
 			this.socket = new DatagramSocket();
@@ -195,12 +195,7 @@ public class ReplicatedCommit extends DB {
 		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
 			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
 			
-			this.sendMessageToShard(message, coordinatorShardIp);
-		}
-		
-		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
-			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
-			
+			this.sendMessageToShard(message, coordinatorShardIp);			
 			answerFromShard = this.receiveMessageFromShards();
 			
 			if (answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
