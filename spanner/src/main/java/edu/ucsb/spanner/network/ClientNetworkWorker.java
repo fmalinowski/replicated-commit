@@ -29,13 +29,9 @@ public class ClientNetworkWorker implements Runnable {
 		Transaction transaction = messageFromClient.getTransaction();
 		setServerTransactionId(this.packet, transaction);
 		
-		if (messageFromClient.getMessageType() == Message.MessageType.READ_REQUEST) {
-			LOGGER.info("Received READ_REQUEST from client. clientTransactionID:" + transaction.getTransactionIdDefinedByClient() + " | serverTransactionID:" + transaction.getServerTransactionId());
-			multiDatacenter.getCurrentShard().handleReadRequestFromClient(transaction);
-		}
-		if (messageFromClient.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST) {
-			LOGGER.info("Received PAXOS__ACCEPT_REQUEST from client. clientTransactionID:" + transaction.getTransactionIdDefinedByClient() + " | serverTransactionID:" + transaction.getServerTransactionId());
-			multiDatacenter.getCurrentShard().handlePaxosAcceptRequest(transaction);
+		if (messageFromClient.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT__PREPARE) {
+			LOGGER.info("Received TWO_PHASE_COMMIT__PREPARE from client. clientTransactionID:" + transaction.getTransactionIdDefinedByClient() + " | serverTransactionID:" + transaction.getServerTransactionId());
+			multiDatacenter.getCurrentShard().handleTwoPhaseCommitPrepareFromClient(transaction);
 		}
 	}
 	

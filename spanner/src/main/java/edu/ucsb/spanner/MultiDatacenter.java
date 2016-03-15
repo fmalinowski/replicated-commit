@@ -1,4 +1,4 @@
-package edu.ucsb.rc;
+package edu.ucsb.spanner;
 
 import java.util.ArrayList;
 import java.util.Collection;
