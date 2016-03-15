@@ -6,7 +6,6 @@ import java.util.HashMap;
 import edu.ucsb.spanner.model.Operation;
 import edu.ucsb.spanner.model.Transaction;
 
-
 public class LocksManager {
 	public enum LockType {
 		SHARED_LOCK, 
