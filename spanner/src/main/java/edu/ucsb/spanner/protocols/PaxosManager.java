@@ -2,15 +2,26 @@ package edu.ucsb.spanner.protocols;
 
 import java.util.HashMap;
 
-import edu.ucsb.spanner.model.Transaction;
+import edu.ucsb.rc.model.Transaction;
 
-
-public class PaxosAcceptsManager {
+public class PaxosManager {
+	
+	
+	public void logTwoPhaseCommitLocally()
+	{
+		
+	}
+	
+	public void replicateLogLocally()
+	{
+		
+	}
+	
 	private int datacentersNumber;
 	private HashMap<String, Integer> paxosAcceptAcceptedMap;
 	private HashMap<String, Long> paxosAcceptTimestamps;
 	
-	public PaxosAcceptsManager(int datacentersNumber) {
+	public PaxosManager(int datacentersNumber) {
 		this.datacentersNumber = datacentersNumber;
 		this.paxosAcceptAcceptedMap = new HashMap<String, Integer>();
 		this.paxosAcceptTimestamps = new HashMap<String, Long>();

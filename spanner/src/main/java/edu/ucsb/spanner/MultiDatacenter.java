@@ -1,11 +1,11 @@
-package edu.ucsb.spanner;
+package edu.ucsb.rc;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
+import edu.ucsb.spanner.network.NetworkHandler;
 import edu.ucsb.spanner.network.NetworkHandlerInterface;
-
 
 public class MultiDatacenter {
 	private static MultiDatacenter _instance;

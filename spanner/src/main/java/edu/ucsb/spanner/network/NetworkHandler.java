@@ -11,7 +11,6 @@ import edu.ucsb.spanner.Shard;
 import edu.ucsb.spanner.model.Message;
 import edu.ucsb.spanner.model.Transaction;
 
-
 public class NetworkHandler implements NetworkHandlerInterface {
 	private int shardsPort;
 	private ShardsNetworkListener shardsNetworkListener;

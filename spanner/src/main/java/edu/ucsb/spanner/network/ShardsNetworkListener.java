@@ -1,4 +1,4 @@
-package edu.ucsb.spanner.network;
+package edu.ucsb.rc.network;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
