@@ -1,1 +1,1 @@
-# Replicated Commit Implementation
+# Replicated Log Implementation

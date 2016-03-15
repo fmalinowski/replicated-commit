@@ -8,7 +8,7 @@ public class PaxosManager {
 		this.datacentersNumber = datacentersNumber;
 	}
 	
-	public void setUpContext()
+	public void startNewPaxosSession()
 	{
 		
 	}
