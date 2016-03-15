@@ -3,7 +3,6 @@ package edu.ucsb.spanner.network;
 import java.net.DatagramPacket;
 import java.util.logging.Logger;
 
-import edu.ucsb.spanner.App;
 import edu.ucsb.spanner.MultiDatacenter;
 import edu.ucsb.spanner.model.Message;
 import edu.ucsb.spanner.model.Transaction;

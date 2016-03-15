@@ -1,10 +1,27 @@
 package edu.ucsb.spanner;
 
-import java.util.ArrayList;
+import static edu.ucsb.spanner.Shard.PaxosType.COMMIT_LOG_REPLICATION;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_REPLICATE_LOG;
+
 import java.util.logging.Logger;
 
 import edu.ucsb.spanner.locks.LocksManager;
 import edu.ucsb.spanner.model.Message;
+import edu.ucsb.spanner.model.Message.MessageType;
 import edu.ucsb.spanner.model.Operation;
 import edu.ucsb.spanner.model.Transaction;
 import edu.ucsb.spanner.network.NetworkHandlerInterface;
@@ -29,8 +46,7 @@ public class Shard {
 	}
 
 	public enum PaxosType {
-		COMMIT_PREPARE,
-		COMMIT_COMMIT
+		COMMIT_PREPARE, COMMIT_LOG_REPLICATION, COMMIT_COMMIT
 	}
 
 	public void initializeShard() {
@@ -74,85 +90,109 @@ public class Shard {
 
 	}
 
-	//Role as Paxos Leader
+	// Role as Paxos Leader
 	private void startPaxos(String string, PaxosType type) {
-		
+
 		if (PaxosType.COMMIT_PREPARE == type) {
-			paxosManager.setUpContext();
-
-			sendPaxosMessages();
+			paxosManager.startNewPaxosSession();
+			// sendPaxosMessages();
+		} else if (PaxosType.COMMIT_LOG_REPLICATION == type) {
+			paxosManager.startNewPaxosSession();
+			//send msg to paxos leaders
+		} else if (PaxosType.COMMIT_COMMIT == type) {
+			paxosManager.startNewPaxosSession();
+			//Send 
 		}
 
 	}
 
-	//Role as a Shard
-	public void handlePaxosPrepare(Transaction transaction, PaxosType type, int shardIdOfSender) {
-		
-		if(PaxosType.COMMIT_PREPARE == type)
-		{
-				
-		}
-		else if(PaxosType.COMMIT_COMMIT == type)
-		{
-			
-		}
+	// Role as a Shard (sent by leader)
+	public void handlePaxosPrepare(Transaction transaction, MessageType type,
+			int shardIdOfSender) {
 
-	}
+		if (PAXOS_PREPARE_COMMIT_PREPARE == type) {
 
-	//Role as Paxos Leader
-	public void handlePaxosPromise(Transaction transaction, PaxosType type, int shardIdOfSender) {
-		if(PaxosType.COMMIT_PREPARE == type)
-		{
-				
-		}
-		else if(PaxosType.COMMIT_COMMIT == type)
-		{
-			
+		} else if (PAXOS_PREPARE_COMMIT == type) {
+
+		} else if (PAXOS_PREPARE_REPLICATE_LOG == type) {
+
 		}
 
 	}
 
-	public void handlePaxosAccept(Transaction transaction, int shardIdOfSender) {
-		// TODO Auto-generated method stub
+	// Role as Paxos Leader (sent by shards)
+	public void handlePaxosPromise(Transaction transaction, MessageType type,
+			int shardIdOfSender) {
+
+		if (PAXOS_PROMISE_COMMIT_PREPARE == type) {
+
+		} else if (PAXOS_PROMISE_COMMIT == type) {
+
+		} else if (PAXOS_PROMISE_REPLICATE_LOG == type) {
+
+		}
 
 	}
 
-	// Role = 2PC Coordinator
+	// Role as Shards (sent by leader)
+	public void handlePaxosAccept(Transaction transaction, MessageType type,
+			int shardIdOfSender) {
+
+		if (PAXOS__ACCEPT_REQUEST_COMMIT_PREPARE == type) {
+
+		} else if (PAXOS__ACCEPT_REQUEST_COMMIT == type) {
+
+		} else if (PAXOS__ACCEPT_REQUEST_REPLICATE_LOG == type) {
+
+		}
+
+	}
+
+	// Role as Leader (sent by Shards)
 	public void handlePaxosAcceptAccepted(Transaction transaction,
-			int shardIdOfSender) {
+			MessageType type, int shardIdOfSender) {
 
-		releaseLocks();
-		sendMessageToClient(null, t);
+		if (PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT_PREPARE == type) {
+			// Tell the coordinator that majority of shards are ready for
+			// Commit 2PC
+			// send message via 2PC Accept to 2PC leader
+		} else if (PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT == type) {
+			//DataStore Commit the log
+			
 
-		// send messages to leaders to perform Paxos based Commit
+		} else if (PAXOS__ACCEPT_REQUEST_ACCEPTED_REPLICATE_LOG == type) {
+			// releaseLocks();
+			//TWO_PHASE_COMMIT__SUCCESS,
+			sendMessageToClient(null, transaction);
+			//send messages to leaders to perform Paxos based Commit
+			//TWO_PHASE_COMMIT__COMMIT,
+			
 
+		}
 	}
 
+	// Role as Leader (sent by Shards)
 	public void handlePaxosAcceptRejected(Transaction transaction,
-			int shardIdOfSender) {
-		// TODO Auto-generated method stub
+			MessageType type, int shardIdOfSender) {
 
+		if (PAXOS__ACCEPT_REQUEST_DENIED_COMMIT_PREPARE == type) {
+
+		} else if (PAXOS__ACCEPT_REQUEST_DENIED_COMMIT == type) {
+			///TWO_PHASE_COMMIT_FAILED,
+		} else if (PAXOS__ACCEPT_REQUEST_DENIED_REPLICATE_LOG == type) {
+			
+			//TWO_PHASE_COMMIT_FAILED,
+
+		}
 	}
 
-	// Role : Cohorts
-	public void handleTwoPhaseCommitPrepareFromPaxosLeader() {
-		// Basically check if TwoPhaseCommit is possible for this shard
-		// Send the message to Paxos Leaders as to whether you can do it or not
-
-	}
-
-	// Role as a 2PC Coordinator
+	// Role as a 2PC Coordinator received from leaders
 	public void handleTwoPhaseCommitPrepareAccepted(Transaction t,
 			int shardIdOfSender) {
 
 		logTwoPhaseCommitLocallyAsACoordinator();
-		replicateLogEntryOf2PCWithPaxos();
-	}
-
-	// Role as a 2PC Coordinator
-	private void logTwoPhaseCommitLocallyAsACoordinator() {
-		// TODO Auto-generated method stub
-
+		//send log along with it
+		startPaxos("", COMMIT_LOG_REPLICATION);
 	}
 
 	// Role as 2PC Coordinator
@@ -161,18 +201,18 @@ public class Shard {
 
 	}
 
-	// Role as 2PC Coordinator
-	private void replicateLogEntryOf2PCWithPaxos() {
-
-		// Use Paxos Manager to have 2PC done via Paxos Majority
-		// send Paxos Request etc (go to netwrork)
-		// receivers are all the leader homies
+	// Role as a 2PC Coordinator
+	private void logTwoPhaseCommitLocallyAsACoordinator() {
+		// TODO Auto-generated method stub
 
 	}
 
-	// As a Paxos Leader
+	// Role as Paxos Leader
 	public void handleTwoPhaseCommitCommit(Transaction t, int shardIdOfSender) {
-		// Start Paxos and replicate Commit
+		// Start Paxos and replicate log
+		//Talk your cohorts bruh
+		startPaxos("", PaxosType.COMMIT_COMMIT);
+		
 	}
 
 	public boolean operationKeyBelongsToCurrentShard(Operation op) {
