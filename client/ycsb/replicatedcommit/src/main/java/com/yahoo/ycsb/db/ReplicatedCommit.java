@@ -55,7 +55,7 @@ public class ReplicatedCommit extends DB {
 
 	@Override
 	public void init() throws DBException {
-		transactionId = randomGenerator.nextLong();
+		transactionId = (long)0;
 
 		try {
 			this.socket = new DatagramSocket();
@@ -195,18 +195,27 @@ public class ReplicatedCommit extends DB {
 		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
 			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
 			
-			this.sendMessageToShard(message, coordinatorShardIp);			
+			this.sendMessageToShard(message, coordinatorShardIp);
+			LOGGER.info("------Commit sent message to shard "
+					+ coordinatorShardIp + " ---Transaction Id "
+					+ transactionId);
 			answerFromShard = this.receiveMessageFromShards();
+			LOGGER.info("------Commit received message from shard "
+					+ coordinatorShardIp + " ---Transaction Id "
+					+ transactionId + " | messageType:" + answerFromShard.getMessageType());
 			
-			if (answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
+			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
 				acceptedPaxosRequests++;
-			} else if (answerFromShard.getMessageType() != Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED) {
+			}
+			else if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED) {
+					
+			} else {
 				// There's a big problem here cause we received a message not related to our request
 				// Might be due response to another request...
 				LOGGER.info("------Commit method---Thread"
 						+ Thread.currentThread().getId() + " ---Transaction Id "
 						+ transactionId
-						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType());
+						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType() + " | txnID received: " + answerFromShard.getTransaction().getTransactionIdDefinedByClient());
 				return;
 			}
 		}
@@ -371,7 +380,7 @@ public class ReplicatedCommit extends DB {
 			this.sendMessageToShard(message, shardIpAddress);
 			answerFromShard = receiveMessageFromShards();
 			
-			if (answerFromShard.getMessageType() == Message.MessageType.READ_ANSWER) {
+			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.READ_ANSWER) {
 				positiveReadAnswers++;
 				readOperationFromServer = answerFromShard.getTransaction().getReadSet().get(0);
 				
@@ -380,7 +389,7 @@ public class ReplicatedCommit extends DB {
 					bestReadOperationFromShards = readOperationFromServer;
 				}
 				
-			} else if(answerFromShard.getMessageType() == Message.MessageType.READ_FAILED) {
+			} else if(answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.READ_FAILED) {
 				// Nothing to do here I guess?
 			} else {
 				// Invalid response from server (we screwed up when listening to messages)
@@ -388,7 +397,7 @@ public class ReplicatedCommit extends DB {
 				LOGGER.info("------sendReadRequestToShards---Thread"
 						+ Thread.currentThread().getId() + " ---Transaction Id "
 						+ transactionId
-						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType());
+						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType() + " | txnID received: " + answerFromShard.getTransaction().getTransactionIdDefinedByClient());
 				return null;
 			}
 		}
@@ -419,6 +428,7 @@ public class ReplicatedCommit extends DB {
 	public Message receiveMessageFromShards() {
 		DatagramPacket packet;
 		byte[] buffer;
+		int sizePacket;
 		
 		buffer = new byte[BUFFER_SIZE];
 		packet = new DatagramPacket(buffer, buffer.length);
@@ -428,8 +438,8 @@ public class ReplicatedCommit extends DB {
 			
 			byte[] receivedBytes;
 			Message messageFromShard;
-			
 			receivedBytes = packet.getData();
+			LOGGER.info("receive packet from :" + packet.getAddress() + " | sizeOfPacket:" + packet.getLength());
 			messageFromShard = Message.deserialize(receivedBytes);
 			return messageFromShard;
 		} catch (Exception e) {
