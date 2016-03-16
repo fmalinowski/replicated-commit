@@ -9,6 +9,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
@@ -55,10 +56,11 @@ public class ReplicatedCommit extends DB {
 
 	@Override
 	public void init() throws DBException {
-		transactionId = randomGenerator.nextLong();
+		transactionId = (long)0;
 
 		try {
 			this.socket = new DatagramSocket();
+			this.socket.setSoTimeout(1000); // Timeout for 1000ms
 
 		} catch (SocketException e) {
 			e.printStackTrace();
@@ -195,18 +197,35 @@ public class ReplicatedCommit extends DB {
 		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
 			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
 			
-			this.sendMessageToShard(message, coordinatorShardIp);			
-			answerFromShard = this.receiveMessageFromShards();
+			this.sendMessageToShard(message, coordinatorShardIp);
+			LOGGER.info("------Commit sent message to shard "
+					+ coordinatorShardIp + " ---Transaction Id "
+					+ transactionId);
+		}
+		
+		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
+			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
 			
-			if (answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
+			do {
+				answerFromShard = receiveMessageFromShards();
+				if (answerFromShard == null) {
+					this.abortedTransactions++;
+					return;
+				}
+			} while (answerFromShard.getTransaction().getTransactionIdDefinedByClient() != this.transactionId);
+			
+			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
 				acceptedPaxosRequests++;
-			} else if (answerFromShard.getMessageType() != Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED) {
+			}
+			else if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED) {
+					
+			} else {
 				// There's a big problem here cause we received a message not related to our request
 				// Might be due response to another request...
 				LOGGER.info("------Commit method---Thread"
 						+ Thread.currentThread().getId() + " ---Transaction Id "
 						+ transactionId
-						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType());
+						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType() + " | txnID received: " + answerFromShard.getTransaction().getTransactionIdDefinedByClient());
 				return;
 			}
 		}
@@ -369,9 +388,20 @@ public class ReplicatedCommit extends DB {
 			shardIpAddress = this.getIpForShard(datacenterID, shardIdHoldingData);
 			
 			this.sendMessageToShard(message, shardIpAddress);
-			answerFromShard = receiveMessageFromShards();
 			
-			if (answerFromShard.getMessageType() == Message.MessageType.READ_ANSWER) {
+			// We might get some messages coming from previous transactions because
+			// a txn was PAXOS accepted by all the servers before a coordinator actually
+			// got the PAXOS accept request from the client.
+			
+			
+			do {
+				answerFromShard = receiveMessageFromShards();
+				if (answerFromShard == null) {
+					return null;
+				}
+			} while (answerFromShard.getTransaction().getTransactionIdDefinedByClient() != this.transactionId);
+			
+			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.READ_ANSWER) {
 				positiveReadAnswers++;
 				readOperationFromServer = answerFromShard.getTransaction().getReadSet().get(0);
 				
@@ -380,7 +410,7 @@ public class ReplicatedCommit extends DB {
 					bestReadOperationFromShards = readOperationFromServer;
 				}
 				
-			} else if(answerFromShard.getMessageType() == Message.MessageType.READ_FAILED) {
+			} else if(answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.READ_FAILED) {
 				// Nothing to do here I guess?
 			} else {
 				// Invalid response from server (we screwed up when listening to messages)
@@ -388,7 +418,7 @@ public class ReplicatedCommit extends DB {
 				LOGGER.info("------sendReadRequestToShards---Thread"
 						+ Thread.currentThread().getId() + " ---Transaction Id "
 						+ transactionId
-						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType());
+						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType() + " | txnID received: " + answerFromShard.getTransaction().getTransactionIdDefinedByClient());
 				return null;
 			}
 		}
@@ -419,6 +449,7 @@ public class ReplicatedCommit extends DB {
 	public Message receiveMessageFromShards() {
 		DatagramPacket packet;
 		byte[] buffer;
+		int sizePacket;
 		
 		buffer = new byte[BUFFER_SIZE];
 		packet = new DatagramPacket(buffer, buffer.length);
@@ -428,10 +459,12 @@ public class ReplicatedCommit extends DB {
 			
 			byte[] receivedBytes;
 			Message messageFromShard;
-			
 			receivedBytes = packet.getData();
+			LOGGER.info("receive packet from :" + packet.getAddress() + " | sizeOfPacket:" + packet.getLength());
 			messageFromShard = Message.deserialize(receivedBytes);
 			return messageFromShard;
+		} catch (SocketTimeoutException e) {
+			return null;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
