@@ -1,20 +1,20 @@
 package edu.ucsb.spanner.network;
 
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_REPLICATE_LOG;
 import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__PREPARE;
 import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__PREPARE_ACCEPTED;
@@ -25,6 +25,7 @@ import java.net.DatagramSocket;
 import java.util.logging.Logger;
 
 import edu.ucsb.spanner.MultiDatacenter;
+import edu.ucsb.spanner.Shard.ResponseType;
 import edu.ucsb.spanner.model.Message;
 import edu.ucsb.spanner.model.Message.MessageType;
 import edu.ucsb.spanner.model.Transaction;
@@ -95,9 +96,9 @@ public class ShardNetworkWorker implements Runnable {
 		}
 
 		// Paxos Leaders Receive this from 2PC Coordinnator
-		if (msgType == PAXOS_PREPARE_COMMIT_PREPARE
-				|| msgType == PAXOS_PREPARE_COMMIT
-				|| msgType == PAXOS_PREPARE_REPLICATE_LOG) {
+		if (msgType == PAXOS_PREPARE_FOR_COMMIT_PREPARE
+				|| msgType == PAXOS_PREPARE_FOR_FINAL_COMMIT
+				|| msgType == PAXOS_PREPARE_FOR_REPLICATE_LOG) {
 
 			LOGGER.info("Received " + msgType + " from shardID:"
 					+ messageFromOtherShard.getShardIdOfSender()
@@ -107,9 +108,9 @@ public class ShardNetworkWorker implements Runnable {
 					msgType, messageFromOtherShard.getShardIdOfSender());
 		}
 
-		if (msgType == PAXOS_PROMISE_COMMIT_PREPARE
-				|| msgType == PAXOS_PROMISE_COMMIT
-				|| msgType == PAXOS_PROMISE_REPLICATE_LOG) {
+		if (msgType == PAXOS_PROMISE_FOR_COMMIT_PREPARE
+				|| msgType == PAXOS_PROMISE_FOR_FINAL_COMMIT
+				|| msgType == PAXOS_PROMISE_FOR_REPLICATE_LOG) {
 			LOGGER.info("Received " + msgType + " from shardID:"
 					+ messageFromOtherShard.getShardIdOfSender()
 					+ " | serverTransactionID:"
@@ -119,9 +120,9 @@ public class ShardNetworkWorker implements Runnable {
 			msgType, messageFromOtherShard.getShardIdOfSender());
 		}
 
-		if (msgType == PAXOS__ACCEPT_REQUEST_COMMIT_PREPARE
-				|| msgType == PAXOS__ACCEPT_REQUEST_COMMIT
-				|| msgType == PAXOS__ACCEPT_REQUEST_REPLICATE_LOG) {
+		if (msgType == PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE
+				|| msgType == PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT
+				|| msgType == PAXOS__ACCEPT_REQUEST_FOR_REPLICATE_LOG) {
 			LOGGER.info("Received " + msgType + " from shardID:"
 					+ messageFromOtherShard.getShardIdOfSender()
 					+ " | serverTransactionID:"
@@ -130,28 +131,28 @@ public class ShardNetworkWorker implements Runnable {
 					msgType, messageFromOtherShard.getShardIdOfSender());
 		}
 
-		if (msgType == PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT_PREPARE
-				|| msgType == PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT
-				|| msgType == PAXOS__ACCEPT_REQUEST_ACCEPTED_REPLICATE_LOG) {
+		if (msgType == PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_COMMIT_PREPARE
+				|| msgType == PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT
+				|| msgType == PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_REPLICATE_LOG) {
 			LOGGER.info("Received " + msgType + " from shardID:"
 					+ messageFromOtherShard.getShardIdOfSender()
 					+ " | serverTransactionID:"
 					+ transaction.getServerTransactionId());
-			multiDatacenter.getCurrentShard().handlePaxosAcceptAccepted(
+			multiDatacenter.getCurrentShard().handlePaxosAcceptAcceptedOrDenied(
 					transaction, msgType,
-					messageFromOtherShard.getShardIdOfSender());
+					messageFromOtherShard.getShardIdOfSender(),ResponseType.ACCEPTED);
 		}
 
-		if (msgType == PAXOS__ACCEPT_REQUEST_DENIED_COMMIT_PREPARE
-				|| msgType == PAXOS__ACCEPT_REQUEST_DENIED_COMMIT
-				|| msgType == PAXOS__ACCEPT_REQUEST_DENIED_REPLICATE_LOG) {
+		if (msgType == PAXOS__ACCEPT_REQUEST_DENIED_FOR_COMMIT_PREPARE
+				|| msgType == PAXOS__ACCEPT_REQUEST_DENIED_FOR_FINAL_COMMIT
+				|| msgType == PAXOS__ACCEPT_REQUEST_DENIED_FOR_REPLICATE_LOG) {
 			LOGGER.info("Received " + msgType + " from shardID:"
 					+ messageFromOtherShard.getShardIdOfSender()
 					+ " | serverTransactionID:"
 					+ transaction.getServerTransactionId());
-			multiDatacenter.getCurrentShard().handlePaxosAcceptRejected(
+			multiDatacenter.getCurrentShard().handlePaxosAcceptAcceptedOrDenied(
 					transaction, msgType,
-					messageFromOtherShard.getShardIdOfSender());
+					messageFromOtherShard.getShardIdOfSender(),ResponseType.DENIED);
 		}
 
 	}
