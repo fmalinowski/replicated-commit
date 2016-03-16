@@ -1,21 +1,23 @@
 package edu.ucsb.spanner;
 
+import static edu.ucsb.spanner.Shard.PaxosType.COMMIT_COMMIT;
 import static edu.ucsb.spanner.Shard.PaxosType.COMMIT_LOG_REPLICATION;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_REPLICATE_LOG;
+import static edu.ucsb.spanner.Shard.PaxosType.COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_FINAL_COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_REPLICATE_LOG;
 
 import java.util.logging.Logger;
 
@@ -49,6 +51,9 @@ public class Shard {
 		COMMIT_PREPARE, COMMIT_LOG_REPLICATION, COMMIT_COMMIT
 	}
 
+	public enum ResponseType{
+		ACCEPTED, DENIED
+	}
 	public void initializeShard() {
 		this.twoPCmanager = new TwoPhaseCommitCoordinator();
 		this.paxosManager = new PaxosManager(MultiDatacenter.getInstance()
@@ -86,21 +91,21 @@ public class Shard {
 		// acquireExcluiveLocks();
 		// logTwoPhaseCommitPrepareLocally();
 		// Talk to others peer shards (or cohorts)
-		startPaxos("peersOfPaxosLeaders", PaxosType.COMMIT_PREPARE);
+		startPaxos(transaction, PaxosType.COMMIT_PREPARE);
 
 	}
 
 	// Role as Paxos Leader
-	private void startPaxos(String string, PaxosType type) {
+	private void startPaxos(Transaction transaction, PaxosType type) {
 
-		if (PaxosType.COMMIT_PREPARE == type) {
-			paxosManager.startNewPaxosSession();
+		if (COMMIT_PREPARE == type) {
+			paxosManager.startNewPaxosSession(transaction);
 			// sendPaxosMessages();
-		} else if (PaxosType.COMMIT_LOG_REPLICATION == type) {
-			paxosManager.startNewPaxosSession();
+		} else if (COMMIT_LOG_REPLICATION == type) {
+			paxosManager.startNewPaxosSession(transaction);
 			//send msg to paxos leaders
-		} else if (PaxosType.COMMIT_COMMIT == type) {
-			paxosManager.startNewPaxosSession();
+		} else if (COMMIT_COMMIT == type) {
+			paxosManager.startNewPaxosSession(transaction);
 			//Send 
 		}
 
@@ -110,11 +115,11 @@ public class Shard {
 	public void handlePaxosPrepare(Transaction transaction, MessageType type,
 			int shardIdOfSender) {
 
-		if (PAXOS_PREPARE_COMMIT_PREPARE == type) {
+		if (PAXOS_PREPARE_FOR_COMMIT_PREPARE == type) {
 
-		} else if (PAXOS_PREPARE_COMMIT == type) {
+		} else if (PAXOS_PREPARE_FOR_FINAL_COMMIT == type) {
 
-		} else if (PAXOS_PREPARE_REPLICATE_LOG == type) {
+		} else if (PAXOS_PREPARE_FOR_REPLICATE_LOG == type) {
 
 		}
 
@@ -124,11 +129,11 @@ public class Shard {
 	public void handlePaxosPromise(Transaction transaction, MessageType type,
 			int shardIdOfSender) {
 
-		if (PAXOS_PROMISE_COMMIT_PREPARE == type) {
+		if (PAXOS_PROMISE_FOR_COMMIT_PREPARE == type) {
 
-		} else if (PAXOS_PROMISE_COMMIT == type) {
+		} else if (PAXOS_PROMISE_FOR_FINAL_COMMIT == type) {
 
-		} else if (PAXOS_PROMISE_REPLICATE_LOG == type) {
+		} else if (PAXOS_PROMISE_FOR_REPLICATE_LOG == type) {
 
 		}
 
@@ -138,51 +143,57 @@ public class Shard {
 	public void handlePaxosAccept(Transaction transaction, MessageType type,
 			int shardIdOfSender) {
 
-		if (PAXOS__ACCEPT_REQUEST_COMMIT_PREPARE == type) {
+		if (PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE == type) {
 
-		} else if (PAXOS__ACCEPT_REQUEST_COMMIT == type) {
+		} else if (PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT == type) {
 
-		} else if (PAXOS__ACCEPT_REQUEST_REPLICATE_LOG == type) {
+		} else if (PAXOS__ACCEPT_REQUEST_FOR_REPLICATE_LOG == type) {
 
 		}
 
 	}
 
 	// Role as Leader (sent by Shards)
-	public void handlePaxosAcceptAccepted(Transaction transaction,
-			MessageType type, int shardIdOfSender) {
+	public void handlePaxosAcceptAcceptedOrDenied(Transaction transaction,
+			MessageType type, int shardIdOfSender, ResponseType responseType) {
 
-		if (PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT_PREPARE == type) {
-			// Tell the coordinator that majority of shards are ready for
-			// Commit 2PC
-			// send message via 2PC Accept to 2PC leader
-		} else if (PAXOS__ACCEPT_REQUEST_ACCEPTED_COMMIT == type) {
+		
+		if (PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_COMMIT_PREPARE == type) {
+			
+			boolean acceptStatus = false;
+			boolean ticksStatus = false;
+			if(ResponseType.ACCEPTED == responseType)
+			{
+				acceptStatus = this.paxosManager.increaseAcceptAccepted(transaction);
+			}
+			else
+			{
+				ticksStatus = this.paxosManager.increaseTicks(transaction);
+			}
+			
+			if(acceptStatus)
+			{
+				// Tell the coordinator that majority of shards are ready for
+				// Commit 2PC
+				// send message via 2PC Accept to 2PC leader
+			}
+			else if(ticksStatus)
+			{
+				//Abort the transaction
+			}
+			
+		} else if (PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT == type) {
+			this.paxosManager.increaseAcceptAccepted(transaction);
 			//DataStore Commit the log
 			
 
-		} else if (PAXOS__ACCEPT_REQUEST_ACCEPTED_REPLICATE_LOG == type) {
+		} else if (PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_REPLICATE_LOG == type) {
+			this.paxosManager.increaseAcceptAccepted(transaction);
 			// releaseLocks();
 			//TWO_PHASE_COMMIT__SUCCESS,
 			sendMessageToClient(null, transaction);
 			//send messages to leaders to perform Paxos based Commit
 			//TWO_PHASE_COMMIT__COMMIT,
-			
-
-		}
-	}
-
-	// Role as Leader (sent by Shards)
-	public void handlePaxosAcceptRejected(Transaction transaction,
-			MessageType type, int shardIdOfSender) {
-
-		if (PAXOS__ACCEPT_REQUEST_DENIED_COMMIT_PREPARE == type) {
-
-		} else if (PAXOS__ACCEPT_REQUEST_DENIED_COMMIT == type) {
-			///TWO_PHASE_COMMIT_FAILED,
-		} else if (PAXOS__ACCEPT_REQUEST_DENIED_REPLICATE_LOG == type) {
-			
-			//TWO_PHASE_COMMIT_FAILED,
-
 		}
 	}
 
