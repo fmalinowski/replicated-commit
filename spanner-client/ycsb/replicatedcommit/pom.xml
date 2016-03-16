@@ -26,8 +26,8 @@ LICENSE file.
         <relativePath>../binding-parent</relativePath>
     </parent>
 
-    <artifactId>spanner-binding</artifactId>
-    <name>Spanner Binding</name>
+    <artifactId>replicatedcommit-binding</artifactId>
+    <name>Replicated Commit Binding</name>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -39,7 +39,7 @@ LICENSE file.
         </dependency>
         <dependency>
          <groupId>edu.ucsb.spanner.model</groupId>
-         <artifactId>spanner-0.0.1-SNAPSHOT</artifactId>
+         <artifactId>spanner</artifactId>
          <scope>system</scope>
          <version>1.0</version>
          <systemPath>${basedir}/lib/spanner.jar</systemPath>
