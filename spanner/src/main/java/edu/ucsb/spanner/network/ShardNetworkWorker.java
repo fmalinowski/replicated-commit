@@ -1,22 +1,21 @@
 package edu.ucsb.spanner.network;
 
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_REPLICATE_LOG;
 import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__PREPARE;
 import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__PREPARE_ACCEPTED;
 import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__PREPARE_DENIED;
 
@@ -35,34 +34,30 @@ public class ShardNetworkWorker implements Runnable {
 			.getLogger(ShardNetworkWorker.class.getName());
 
 	private DatagramPacket packet;
+	private Message messageFromOtherShard;
 
 	public ShardNetworkWorker(DatagramSocket serverSocket, DatagramPacket packet) {
 		this.packet = packet;
 	}
 
+	public ShardNetworkWorker(Message messageFromOtherShard) {
+		this.messageFromOtherShard = messageFromOtherShard;
+	}
+
 	public void run() {
-		byte[] receivedBytes;
-		Message messageFromOtherShard;
 
-		receivedBytes = this.packet.getData();
-		messageFromOtherShard = Message.deserialize(receivedBytes);
-		// We handle the message received from the other shard here
+		if (this.packet != null) {
+			byte[] receivedBytes;
 
-		MultiDatacenter multiDatacenter = MultiDatacenter.getInstance();
+			receivedBytes = this.packet.getData();
+			messageFromOtherShard = Message.deserialize(receivedBytes);
+			// We handle the message received from the other shard here
 
-		Transaction transaction = messageFromOtherShard.getTransaction();
-
-		// coming from the Paxos Leader for this kind of shard from different
-		// data centers
-		MessageType msgType = messageFromOtherShard.getMessageType();
-		if (msgType == TWO_PHASE_COMMIT__PREPARE) {
-			LOGGER.info("Received TWO_PHASE_COMMIT__PREPARE from shardID:"
-					+ messageFromOtherShard.getShardIdOfSender()
-					+ " | serverTransactionID:"
-					+ transaction.getServerTransactionId());
-			multiDatacenter.getCurrentShard()
-					.handleTwoPhaseCommitPrepareFromClient(transaction);
 		}
+		
+		MultiDatacenter multiDatacenter = MultiDatacenter.getInstance();
+		Transaction transaction = messageFromOtherShard.getTransaction();
+		MessageType msgType = messageFromOtherShard.getMessageType();
 
 		// To be received by 2PC Cooridinator, sent by two Paxos Leaders
 		if (msgType == TWO_PHASE_COMMIT__PREPARE_ACCEPTED) {
@@ -138,9 +133,10 @@ public class ShardNetworkWorker implements Runnable {
 					+ messageFromOtherShard.getShardIdOfSender()
 					+ " | serverTransactionID:"
 					+ transaction.getServerTransactionId());
-			multiDatacenter.getCurrentShard().handlePaxosAcceptAcceptedOrDenied(
-					transaction, msgType,
-					messageFromOtherShard.getShardIdOfSender(),ResponseType.ACCEPTED);
+			multiDatacenter.getCurrentShard()
+					.handlePaxosAcceptAcceptedOrDenied(transaction, msgType,
+							messageFromOtherShard.getShardIdOfSender(),
+							ResponseType.ACCEPTED);
 		}
 
 		if (msgType == PAXOS__ACCEPT_REQUEST_DENIED_FOR_COMMIT_PREPARE
@@ -150,10 +146,10 @@ public class ShardNetworkWorker implements Runnable {
 					+ messageFromOtherShard.getShardIdOfSender()
 					+ " | serverTransactionID:"
 					+ transaction.getServerTransactionId());
-			multiDatacenter.getCurrentShard().handlePaxosAcceptAcceptedOrDenied(
-					transaction, msgType,
-					messageFromOtherShard.getShardIdOfSender(),ResponseType.DENIED);
+			multiDatacenter.getCurrentShard()
+					.handlePaxosAcceptAcceptedOrDenied(transaction, msgType,
+							messageFromOtherShard.getShardIdOfSender(),
+							ResponseType.DENIED);
 		}
-
 	}
 }
