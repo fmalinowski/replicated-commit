@@ -19,15 +19,15 @@ public class PaxosManager {
 	}
 
 	public void startNewPaxosSession(Transaction previousTransaction) {
-		if (previousTransaction != null) {
+		/*if (previousTransaction != null) {
 			// Remove only if the server id exists
 			// TODO
 			removeTrackOfPaxosAccepts(previousTransaction);
-		}
+		}*/
 	}
 
 	public synchronized boolean increaseAcceptAccepted(Transaction t) {
-		String txnId = t.getServerTransactionId();
+		/*String txnId = t.getServerTransactionId();
 		int numberOfAccepts;
 		int ticks;
 
@@ -42,11 +42,13 @@ public class PaxosManager {
 		}
 		this.paxosAcceptAcceptedMap.put(txnId, numberOfAccepts);
 		this.paxosTicksForTransaction.put(txnId, ticks);
-		return this.isPaxosAcceptAcceptedByMajority(t);
+		return this.isPaxosAcceptAcceptedByMajority(t);*/
+		
+		return true;
 	}
 
 	public synchronized boolean increaseTicks(Transaction t) {
-		String txnId = t.getServerTransactionId();
+		/*String txnId = t.getServerTransactionId();
 		int ticks;
 
 		if (!this.paxosAcceptAcceptedMap
@@ -57,7 +59,9 @@ public class PaxosManager {
 			ticks = this.paxosTicksForTransaction.get(txnId) + 1;
 		}
 		this.paxosTicksForTransaction.put(txnId, ticks);
-		return (this.paxosTicksForTransaction.get(txnId) == datacentersNumber);
+		return (this.paxosTicksForTransaction.get(txnId) == datacentersNumber);*/
+		
+		return false;
 	}
 
 	private synchronized int getAcceptAcceptedNumber(Transaction t) {

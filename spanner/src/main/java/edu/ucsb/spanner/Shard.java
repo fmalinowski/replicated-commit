@@ -3,22 +3,25 @@ package edu.ucsb.spanner;
 import static edu.ucsb.spanner.Shard.PaxosType.COMMIT_COMMIT;
 import static edu.ucsb.spanner.Shard.PaxosType.COMMIT_LOG_REPLICATION;
 import static edu.ucsb.spanner.Shard.PaxosType.COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PREPARE_FOR_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS_PROMISE_FOR_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_COMMIT_PREPARE;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_REPLICATE_LOG;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_FINAL_COMMIT;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_COMMIT_PREPARE;
-import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT;
 import static edu.ucsb.spanner.model.Message.MessageType.PAXOS__ACCEPT_REQUEST_FOR_REPLICATE_LOG;
+import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT_FAILED;
+import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__COMMIT;
+import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__PREPARE_ACCEPTED;
+import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__PREPARE_DENIED;
+import static edu.ucsb.spanner.model.Message.MessageType.TWO_PHASE_COMMIT__SUCCESS;
 
+import java.util.ArrayList;
 import java.util.logging.Logger;
 
 import edu.ucsb.spanner.locks.LocksManager;
@@ -27,6 +30,7 @@ import edu.ucsb.spanner.model.Message.MessageType;
 import edu.ucsb.spanner.model.Operation;
 import edu.ucsb.spanner.model.Transaction;
 import edu.ucsb.spanner.network.NetworkHandlerInterface;
+import edu.ucsb.spanner.network.ShardNetworkWorker;
 import edu.ucsb.spanner.protocols.PaxosManager;
 import edu.ucsb.spanner.protocols.TwoPhaseCommitCoordinator;
 
@@ -51,9 +55,10 @@ public class Shard {
 		COMMIT_PREPARE, COMMIT_LOG_REPLICATION, COMMIT_COMMIT
 	}
 
-	public enum ResponseType{
+	public enum ResponseType {
 		ACCEPTED, DENIED
 	}
+
 	public void initializeShard() {
 		this.twoPCmanager = new TwoPhaseCommitCoordinator();
 		this.paxosManager = new PaxosManager(MultiDatacenter.getInstance()
@@ -88,25 +93,66 @@ public class Shard {
 	// Role as a Paxos Leader
 	public void handleTwoPhaseCommitPrepareFromClient(Transaction transaction) {
 
-		// acquireExcluiveLocks();
-		// logTwoPhaseCommitPrepareLocally();
-		// Talk to others peer shards (or cohorts)
-		startPaxos(transaction, PaxosType.COMMIT_PREPARE);
+		if (!this.locksManager.acquireExclusiveLocksForTxn(transaction)) {
+			// Remove all locks for Txn
+			this.locksManager.removeAllLocksForTxn(transaction);
+			this.sendMessageToClient(TWO_PHASE_COMMIT_FAILED, transaction);
+			return;
+		}
 
+		// logTwoPhaseCommitPrepareLocally();
+
+		startPaxos(transaction, COMMIT_PREPARE);
 	}
 
 	// Role as Paxos Leader
 	private void startPaxos(Transaction transaction, PaxosType type) {
 
+		LOGGER.info("Starting Paxos for " + type + " Transaction SID "
+				+ transaction.getServerTransactionId() + " Transation CID "
+				+ transaction.getTransactionIdDefinedByClient()
+				+ " Current Shard " + this.ipAddress);
+
+		ArrayList<Shard> otherShardsWithId = MultiDatacenter.getInstance()
+				.getOtherShardsWithId(this.shardID);
+
 		if (COMMIT_PREPARE == type) {
+
 			paxosManager.startNewPaxosSession(transaction);
-			// sendPaxosMessages();
+			// Send messages to same shard in different datacenters
+			if (otherShardsWithId != null) {
+				for (Shard otherShard : otherShardsWithId) {
+					this.sendMessageToOtherShard(otherShard,
+							PAXOS_PREPARE_FOR_COMMIT_PREPARE, transaction);
+				}
+
+			}
+
 		} else if (COMMIT_LOG_REPLICATION == type) {
+
 			paxosManager.startNewPaxosSession(transaction);
-			//send msg to paxos leaders
+
+			// send msg to other paxos leaders
+			if (otherShardsWithId != null) {
+				for (Shard otherShard : otherShardsWithId) {
+					this.sendMessageToOtherShard(otherShard,
+							PAXOS_PREPARE_FOR_REPLICATE_LOG, transaction);
+				}
+
+			}
+
 		} else if (COMMIT_COMMIT == type) {
+
 			paxosManager.startNewPaxosSession(transaction);
-			//Send 
+			// Send messages to same shard in different datacenters
+
+			if (otherShardsWithId != null) {
+				for (Shard otherShard : otherShardsWithId) {
+					this.sendMessageToOtherShard(otherShard,
+							PAXOS_PREPARE_FOR_FINAL_COMMIT, transaction);
+				}
+
+			}
 		}
 
 	}
@@ -117,10 +163,52 @@ public class Shard {
 
 		if (PAXOS_PREPARE_FOR_COMMIT_PREPARE == type) {
 
+			LOGGER.info("Received " + type + " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
+			// Acquire locks and all
+			// Send Message to Leader
+			sendMessageToOtherShard(this,
+					MessageType.PAXOS_PROMISE_FOR_COMMIT_PREPARE, transaction);
+			LOGGER.info("Sending " + PAXOS_PROMISE_FOR_COMMIT_PREPARE
+					+ " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
 		} else if (PAXOS_PREPARE_FOR_FINAL_COMMIT == type) {
+
+			LOGGER.info("Received " + type + " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
+			// Acquire locks and all
+			sendMessageToOtherShard(this,
+					MessageType.PAXOS_PROMISE_FOR_FINAL_COMMIT, transaction);
+			LOGGER.info("Sending " + PAXOS_PROMISE_FOR_FINAL_COMMIT
+					+ " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
 
 		} else if (PAXOS_PREPARE_FOR_REPLICATE_LOG == type) {
 
+			LOGGER.info("Received " + type + " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
+			// Acquire locks and all
+			sendMessageToOtherShard(this,
+					MessageType.PAXOS_PROMISE_FOR_REPLICATE_LOG, transaction);
+			LOGGER.info("Sending " + PAXOS_PROMISE_FOR_REPLICATE_LOG
+					+ " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
 		}
 
 	}
@@ -129,11 +217,58 @@ public class Shard {
 	public void handlePaxosPromise(Transaction transaction, MessageType type,
 			int shardIdOfSender) {
 
+		ArrayList<Shard> otherShardsWithId = MultiDatacenter.getInstance()
+				.getOtherShardsWithId(this.shardID);
+
 		if (PAXOS_PROMISE_FOR_COMMIT_PREPARE == type) {
+
+			LOGGER.info("Received " + type + " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
+			// send msg to other paxos leaders
+			if (otherShardsWithId != null) {
+				for (Shard otherShard : otherShardsWithId) {
+					this.sendMessageToOtherShard(otherShard,
+							PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE,
+							transaction);
+				}
+
+			}
 
 		} else if (PAXOS_PROMISE_FOR_FINAL_COMMIT == type) {
 
+			LOGGER.info("Received " + type + " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
+			// send msg to other paxos leaders
+			if (otherShardsWithId != null) {
+				for (Shard otherShard : otherShardsWithId) {
+					this.sendMessageToOtherShard(otherShard,
+							PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT, transaction);
+				}
+
+			}
+
 		} else if (PAXOS_PROMISE_FOR_REPLICATE_LOG == type) {
+
+			LOGGER.info("Received " + type + " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
+			// send msg to other paxos leaders
+			if (otherShardsWithId != null) {
+				for (Shard otherShard : otherShardsWithId) {
+					this.sendMessageToOtherShard(otherShard,
+							PAXOS__ACCEPT_REQUEST_FOR_REPLICATE_LOG,
+							transaction);
+				}
+
+			}
 
 		}
 
@@ -145,10 +280,45 @@ public class Shard {
 
 		if (PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE == type) {
 
+			LOGGER.info("Received " + type + " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
+			// Acquire locks and all
+			sendMessageToOtherShard(
+					this,
+					MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_COMMIT_PREPARE,
+					transaction);
+
 		} else if (PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT == type) {
+
+			LOGGER.info("Received " + type + " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
+			LOGGER.info("Commiting transaction "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " in shard " + this.ipAddress);
+
+			sendMessageToOtherShard(
+					this,
+					MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT,
+					transaction);
 
 		} else if (PAXOS__ACCEPT_REQUEST_FOR_REPLICATE_LOG == type) {
 
+			LOGGER.info("Received " + type + " Transaction SID "
+					+ transaction.getServerTransactionId() + " Transation CID "
+					+ transaction.getTransactionIdDefinedByClient()
+					+ " Current Shard " + this.ipAddress);
+
+			// Acquire locks and all
+			sendMessageToOtherShard(
+					this,
+					MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_REPLICATE_LOG,
+					transaction);
 		}
 
 	}
@@ -157,43 +327,117 @@ public class Shard {
 	public void handlePaxosAcceptAcceptedOrDenied(Transaction transaction,
 			MessageType type, int shardIdOfSender, ResponseType responseType) {
 
-		
+		LOGGER.info("Received " + type + " Transaction SID "
+				+ transaction.getServerTransactionId() + " Transation CID "
+				+ transaction.getTransactionIdDefinedByClient()
+				+ " Current Shard " + this.ipAddress);
+
 		if (PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_COMMIT_PREPARE == type) {
-			
+
 			boolean acceptStatus = false;
 			boolean ticksStatus = false;
-			if(ResponseType.ACCEPTED == responseType)
-			{
-				acceptStatus = this.paxosManager.increaseAcceptAccepted(transaction);
-			}
-			else
-			{
+			if (ResponseType.ACCEPTED == responseType) {
+				acceptStatus = this.paxosManager
+						.increaseAcceptAccepted(transaction);
+			} else {
 				ticksStatus = this.paxosManager.increaseTicks(transaction);
 			}
-			
-			if(acceptStatus)
-			{
-				// Tell the coordinator that majority of shards are ready for
-				// Commit 2PC
-				// send message via 2PC Accept to 2PC leader
+
+			if (acceptStatus) {
+
+				LOGGER.info("Achieved majority for " + type
+						+ " Transaction SID "
+						+ transaction.getServerTransactionId()
+						+ " Transation CID "
+						+ transaction.getTransactionIdDefinedByClient()
+						+ " Current Shard " + this.ipAddress);
+
+				sendMessageToOtherShard(this,
+						TWO_PHASE_COMMIT__PREPARE_ACCEPTED, transaction);
+
+			} else if (ticksStatus) {
+
+				LOGGER.info("Aborting as there is no majority for " + type
+						+ " Transaction SID "
+						+ transaction.getServerTransactionId()
+						+ " Transation CID "
+						+ transaction.getTransactionIdDefinedByClient()
+						+ " Current Shard " + this.ipAddress);
+				sendMessageToOtherShard(this, TWO_PHASE_COMMIT__PREPARE_DENIED,
+						transaction);
 			}
-			else if(ticksStatus)
-			{
-				//Abort the transaction
-			}
-			
+
 		} else if (PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT == type) {
-			this.paxosManager.increaseAcceptAccepted(transaction);
-			//DataStore Commit the log
-			
+
+			boolean acceptStatus = false;
+			boolean ticksStatus = false;
+			if (ResponseType.ACCEPTED == responseType) {
+				acceptStatus = this.paxosManager
+						.increaseAcceptAccepted(transaction);
+			} else {
+				ticksStatus = this.paxosManager.increaseTicks(transaction);
+			}
+
+			if (acceptStatus) {
+
+				LOGGER.info("Releasing all locks cos Achieved majority for "
+						+ type + " Transaction SID "
+						+ transaction.getServerTransactionId()
+						+ " Transation CID "
+						+ transaction.getTransactionIdDefinedByClient()
+						+ " Current Shard " + this.ipAddress);
+
+				// Release locks
+				this.locksManager.removeAllLocksForTxn(transaction);
+
+			} else if (ticksStatus) {
+
+				LOGGER.info("Aborting Final Commit as there is no majority for "
+						+ type
+						+ " Transaction SID "
+						+ transaction.getServerTransactionId()
+						+ " Transation CID "
+						+ transaction.getTransactionIdDefinedByClient()
+						+ " Current Shard " + this.ipAddress);
+				// Release locks
+				this.locksManager.removeAllLocksForTxn(transaction);
+			}
 
 		} else if (PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_REPLICATE_LOG == type) {
-			this.paxosManager.increaseAcceptAccepted(transaction);
-			// releaseLocks();
-			//TWO_PHASE_COMMIT__SUCCESS,
-			sendMessageToClient(null, transaction);
-			//send messages to leaders to perform Paxos based Commit
-			//TWO_PHASE_COMMIT__COMMIT,
+
+			boolean acceptStatus = false;
+			boolean ticksStatus = false;
+			if (ResponseType.ACCEPTED == responseType) {
+				acceptStatus = this.paxosManager
+						.increaseAcceptAccepted(transaction);
+			} else {
+				ticksStatus = this.paxosManager.increaseTicks(transaction);
+			}
+
+			if (acceptStatus) {
+
+				LOGGER.info("Two phase commit successful " + type
+						+ " Transaction SID "
+						+ transaction.getServerTransactionId()
+						+ " Transation CID "
+						+ transaction.getTransactionIdDefinedByClient()
+						+ " Current Shard " + this.ipAddress);
+
+				sendMessageToClient(TWO_PHASE_COMMIT__SUCCESS, transaction);
+				sendMessageToOtherShard(this, TWO_PHASE_COMMIT__COMMIT,
+						transaction);
+
+			} else if (ticksStatus) {
+
+				LOGGER.info("Two Phase Commit failed no majority for " + type
+						+ " Transaction SID "
+						+ transaction.getServerTransactionId()
+						+ " Transation CID "
+						+ transaction.getTransactionIdDefinedByClient()
+						+ " Current Shard " + this.ipAddress);
+				sendMessageToClient(TWO_PHASE_COMMIT_FAILED, transaction);
+
+			}
 		}
 	}
 
@@ -202,13 +446,14 @@ public class Shard {
 			int shardIdOfSender) {
 
 		logTwoPhaseCommitLocallyAsACoordinator();
-		//send log along with it
-		startPaxos("", COMMIT_LOG_REPLICATION);
+		// send log along with it
+		startPaxos(t, COMMIT_LOG_REPLICATION);
 	}
 
 	// Role as 2PC Coordinator
 	public void handleTwoPhaseCommitPrepareDenied(Transaction t,
 			int shardIdOfSender) {
+		sendMessageToClient(TWO_PHASE_COMMIT__PREPARE_DENIED, t);
 
 	}
 
@@ -220,35 +465,17 @@ public class Shard {
 
 	// Role as Paxos Leader
 	public void handleTwoPhaseCommitCommit(Transaction t, int shardIdOfSender) {
-		// Start Paxos and replicate log
-		//Talk your cohorts bruh
-		startPaxos("", PaxosType.COMMIT_COMMIT);
-		
+		startPaxos(t, PaxosType.COMMIT_COMMIT);
+
 	}
 
 	public boolean operationKeyBelongsToCurrentShard(Operation op) {
 		return this.datacenter.getShardIdForKey(op.getKey()) == this.shardID;
 	}
 
-	private void sendMessageToOtherShard(Shard shard,
-			Message.MessageType messageType, Transaction t) {
-		Message messageForShardSender = new Message();
-		messageForShardSender.setMessageType(messageType);
-		messageForShardSender.setShardIdOfSender(this.shardID);
-		messageForShardSender.setTransaction(t);
-
-		LOGGER.info("Send the messageType:" + messageType + " to shardID:"
-				+ shard.getShardID() + " of datacenterID:"
-				+ shard.getDatacenter().getDatacenterID()
-				+ " | serverTransactionID:" + t.getServerTransactionId());
-
-		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance()
-				.getNetworkHandler();
-		networkHandler.sendMessageToShard(shard, messageForShardSender);
-	}
-
 	private void sendMessageToClient(Message.MessageType messageType,
 			Transaction t) {
+
 		Message messageForClient = new Message();
 		messageForClient.setMessageType(messageType);
 		messageForClient.setShardIdOfSender(this.shardID);
@@ -262,6 +489,22 @@ public class Shard {
 		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance()
 				.getNetworkHandler();
 		networkHandler.sendMessageToClient(t, messageForClient);
+	}
+
+	private void sendMessageToOtherShard(Shard shard,
+			Message.MessageType messageType, Transaction t) {
+
+		Message messageForShardSender = new Message();
+		messageForShardSender.setMessageType(messageType);
+		messageForShardSender.setShardIdOfSender(this.shardID);
+		messageForShardSender.setTransaction(t);
+
+		LOGGER.info("Send the messageType:" + messageType + " to shardID:"
+				+ shard.getShardID() + " of datacenterID:"
+				+ shard.getDatacenter().getDatacenterID()
+				+ " | serverTransactionID:" + t.getServerTransactionId());
+
+		new Thread(new ShardNetworkWorker(messageForShardSender)).start();
 	}
 
 }

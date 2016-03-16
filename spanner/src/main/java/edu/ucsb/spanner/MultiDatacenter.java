@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
-import edu.ucsb.spanner.network.NetworkHandler;
 import edu.ucsb.spanner.network.NetworkHandlerInterface;
 
 public class MultiDatacenter {
