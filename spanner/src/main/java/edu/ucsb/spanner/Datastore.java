@@ -25,14 +25,14 @@ public class Datastore {
 	}
 	
 	public void initialize() {
-		this.hbaseDao = new HBaseDAO();
+		/*this.hbaseDao = new HBaseDAO();
 		// We need to create the table here!
 		String[] columnFamilies = {this.columnFamily};
 		try {
 			this.hbaseDao.createTable(this.table, columnFamilies);
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
+		}*/
 	}
 
 	/*
