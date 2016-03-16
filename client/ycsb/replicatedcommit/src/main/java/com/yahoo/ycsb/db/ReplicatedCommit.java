@@ -9,6 +9,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
@@ -59,6 +60,7 @@ public class ReplicatedCommit extends DB {
 
 		try {
 			this.socket = new DatagramSocket();
+			this.socket.setSoTimeout(1000); // Timeout for 1000ms
 
 		} catch (SocketException e) {
 			e.printStackTrace();
@@ -199,10 +201,18 @@ public class ReplicatedCommit extends DB {
 			LOGGER.info("------Commit sent message to shard "
 					+ coordinatorShardIp + " ---Transaction Id "
 					+ transactionId);
-			answerFromShard = this.receiveMessageFromShards();
-			LOGGER.info("------Commit received message from shard "
-					+ coordinatorShardIp + " ---Transaction Id "
-					+ transactionId + " | messageType:" + answerFromShard.getMessageType());
+		}
+		
+		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
+			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
+			
+			do {
+				answerFromShard = receiveMessageFromShards();
+				if (answerFromShard == null) {
+					this.abortedTransactions++;
+					return;
+				}
+			} while (answerFromShard.getTransaction().getTransactionIdDefinedByClient() != this.transactionId);
 			
 			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
 				acceptedPaxosRequests++;
@@ -378,7 +388,18 @@ public class ReplicatedCommit extends DB {
 			shardIpAddress = this.getIpForShard(datacenterID, shardIdHoldingData);
 			
 			this.sendMessageToShard(message, shardIpAddress);
-			answerFromShard = receiveMessageFromShards();
+			
+			// We might get some messages coming from previous transactions because
+			// a txn was PAXOS accepted by all the servers before a coordinator actually
+			// got the PAXOS accept request from the client.
+			
+			
+			do {
+				answerFromShard = receiveMessageFromShards();
+				if (answerFromShard == null) {
+					return null;
+				}
+			} while (answerFromShard.getTransaction().getTransactionIdDefinedByClient() != this.transactionId);
 			
 			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.READ_ANSWER) {
 				positiveReadAnswers++;
@@ -442,6 +463,8 @@ public class ReplicatedCommit extends DB {
 			LOGGER.info("receive packet from :" + packet.getAddress() + " | sizeOfPacket:" + packet.getLength());
 			messageFromShard = Message.deserialize(receivedBytes);
 			return messageFromShard;
+		} catch (SocketTimeoutException e) {
+			return null;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
