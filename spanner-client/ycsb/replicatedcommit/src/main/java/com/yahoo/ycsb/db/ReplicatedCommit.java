@@ -1,8 +1,6 @@
 package com.yahoo.ycsb.db;
 
-import static com.yahoo.ycsb.Status.ERROR;
 import static com.yahoo.ycsb.Status.NOT_IMPLEMENTED;
-import static com.yahoo.ycsb.Status.OK;
 
 import java.io.FileInputStream;
 import java.net.DatagramPacket;
@@ -18,9 +16,15 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.logging.Logger;
 
-import com.yahoo.ycsb.*;
+import com.yahoo.ycsb.ByteIterator;
+import com.yahoo.ycsb.DB;
+import com.yahoo.ycsb.DBException;
+import com.yahoo.ycsb.Status;
+import com.yahoo.ycsb.StringByteIterator;
 
-import edu.ucsb.spanner.model.*;
+import edu.ucsb.spanner.model.Message;
+import edu.ucsb.spanner.model.Operation;
+import edu.ucsb.spanner.model.Transaction;
 
 public class ReplicatedCommit extends DB {
 
@@ -44,11 +48,9 @@ public class ReplicatedCommit extends DB {
 
 	private ArrayList<Operation> currentReadSet;
 	private ArrayList<Operation> currentWriteSet;
-	private Random randomGenerator;
 
 	public ReplicatedCommit() {
 		LOGGER = Logger.getLogger(CLASS_NAME);
-		randomGenerator = new Random();
 		this.ipMap = new HashMap<Integer, String>();
 		
 		readConfigFileAndInitialize();
@@ -377,7 +379,7 @@ public class ReplicatedCommit extends DB {
 		shardIdHoldingData = this.getShardIdHoldingData(operationKey);
 		
 		message = new Message();
-		message.setMessageType(Message.MessageType.READ_REQUEST);
+		message.setMessageType(Message.MessageType.TWO_PHASE_COMMIT__COMMIT);
 		message.setTransaction(readTransaction);
 		
 		positiveReadAnswers = 0;
@@ -401,7 +403,7 @@ public class ReplicatedCommit extends DB {
 				}
 			} while (answerFromShard.getTransaction().getTransactionIdDefinedByClient() != this.transactionId);
 			
-			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.READ_ANSWER) {
+			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT__SUCCESS) {
 				positiveReadAnswers++;
 				readOperationFromServer = answerFromShard.getTransaction().getReadSet().get(0);
 				
@@ -410,7 +412,7 @@ public class ReplicatedCommit extends DB {
 					bestReadOperationFromShards = readOperationFromServer;
 				}
 				
-			} else if(answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.READ_FAILED) {
+			} else if(answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT_FAILED) {
 				// Nothing to do here I guess?
 			} else {
 				// Invalid response from server (we screwed up when listening to messages)
@@ -449,7 +451,6 @@ public class ReplicatedCommit extends DB {
 	public Message receiveMessageFromShards() {
 		DatagramPacket packet;
 		byte[] buffer;
-		int sizePacket;
 		
 		buffer = new byte[BUFFER_SIZE];
 		packet = new DatagramPacket(buffer, buffer.length);
