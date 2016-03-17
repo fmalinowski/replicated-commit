@@ -120,39 +120,39 @@ public class Shard {
 
 			paxosManager.startNewPaxosSession(transaction);
 			// Send messages to same shard in different datacenters
-			if (otherShardsWithId != null) {
-				for (Shard otherShard : otherShardsWithId) {
-					this.sendMessageToOtherShard(otherShard,
+			//if (otherShardsWithId != null) {
+				//for (Shard otherShard : otherShardsWithId) {
+					this.sendMessageToOtherShard(this,
 							PAXOS_PREPARE_FOR_COMMIT_PREPARE, transaction);
-				}
+				//}
 
-			}
+			//}
 
 		} else if (COMMIT_LOG_REPLICATION == type) {
 
 			paxosManager.startNewPaxosSession(transaction);
 
 			// send msg to other paxos leaders
-			if (otherShardsWithId != null) {
-				for (Shard otherShard : otherShardsWithId) {
-					this.sendMessageToOtherShard(otherShard,
+			//if (otherShardsWithId != null) {
+				//for (Shard otherShard : otherShardsWithId) {
+					this.sendMessageToOtherShard(this,
 							PAXOS_PREPARE_FOR_REPLICATE_LOG, transaction);
-				}
+				//}
 
-			}
+			//}
 
 		} else if (COMMIT_COMMIT == type) {
 
 			paxosManager.startNewPaxosSession(transaction);
 			// Send messages to same shard in different datacenters
 
-			if (otherShardsWithId != null) {
-				for (Shard otherShard : otherShardsWithId) {
-					this.sendMessageToOtherShard(otherShard,
+			//if (otherShardsWithId != null) {
+				//for (Shard otherShard : otherShardsWithId) {
+					this.sendMessageToOtherShard(this,
 							PAXOS_PREPARE_FOR_FINAL_COMMIT, transaction);
-				}
+				//}
 
-			}
+			//}
 		}
 
 	}

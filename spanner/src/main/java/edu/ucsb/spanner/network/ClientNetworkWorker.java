@@ -29,7 +29,6 @@ public class ClientNetworkWorker implements Runnable {
 		setServerTransactionId(this.packet, transaction);
 		
 		if (messageFromClient.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT__PREPARE) {
-			LOGGER.info("Received TWO_PHASE_COMMIT__PREPARE from client. clientTransactionID:" + transaction.getTransactionIdDefinedByClient() + " | serverTransactionID:" + transaction.getServerTransactionId());
 			multiDatacenter.getCurrentShard().handleTwoPhaseCommitPrepareFromClient(transaction);
 		}
 	}
