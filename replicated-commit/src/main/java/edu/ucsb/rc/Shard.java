@@ -26,6 +26,8 @@ public class Shard {
 	private PaxosAcceptsManager paxosAcceptsManager;
 	private CommitLogger commitLogger;
 	
+	private static final int LATENCY_SIMULATION_BETWEEN_DATACENTERS = 50; // 50ms between datacenters
+	
 	public Shard() {
 		this.locksManager = new LocksManager();
 		this.setShardID(-1);
@@ -229,6 +231,10 @@ public class Shard {
 		
 		LOGGER.info("Send the messageType:" + messageType + " to shardID:" + shard.getShardID() + " of datacenterID:" + shard.getDatacenter().getDatacenterID() + " | serverTransactionID:" + t.getServerTransactionId());
 		
+		if (App.isDatacenterLatencySimulationOn() && !this.datacenter.getShards().contains(shard)) {
+			simulateLatencyBetweenDatacenters();
+		}
+		
 		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
 		networkHandler.sendMessageToShard(shard, messageForShardSender);
 	}
@@ -243,5 +249,13 @@ public class Shard {
 		
 		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
 		networkHandler.sendMessageToClient(t, messageForClient);
+	}
+	
+	private void simulateLatencyBetweenDatacenters() {
+		try {
+			Thread.currentThread().sleep(LATENCY_SIMULATION_BETWEEN_DATACENTERS);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 }
