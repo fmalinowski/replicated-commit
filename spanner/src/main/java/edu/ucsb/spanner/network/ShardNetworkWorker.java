@@ -95,10 +95,6 @@ public class ShardNetworkWorker implements Runnable {
 				|| msgType == PAXOS_PREPARE_FOR_FINAL_COMMIT
 				|| msgType == PAXOS_PREPARE_FOR_REPLICATE_LOG) {
 
-			LOGGER.info("Received " + msgType + " from shardID:"
-					+ messageFromOtherShard.getShardIdOfSender()
-					+ " | serverTransactionID:"
-					+ transaction.getServerTransactionId());
 			multiDatacenter.getCurrentShard().handlePaxosPrepare(transaction,
 					msgType, messageFromOtherShard.getShardIdOfSender());
 		}
@@ -106,10 +102,6 @@ public class ShardNetworkWorker implements Runnable {
 		if (msgType == PAXOS_PROMISE_FOR_COMMIT_PREPARE
 				|| msgType == PAXOS_PROMISE_FOR_FINAL_COMMIT
 				|| msgType == PAXOS_PROMISE_FOR_REPLICATE_LOG) {
-			LOGGER.info("Received " + msgType + " from shardID:"
-					+ messageFromOtherShard.getShardIdOfSender()
-					+ " | serverTransactionID:"
-					+ transaction.getServerTransactionId());
 			multiDatacenter.getCurrentShard().handlePaxosPromise(transaction,
 
 			msgType, messageFromOtherShard.getShardIdOfSender());
@@ -118,10 +110,6 @@ public class ShardNetworkWorker implements Runnable {
 		if (msgType == PAXOS__ACCEPT_REQUEST_FOR_COMMIT_PREPARE
 				|| msgType == PAXOS__ACCEPT_REQUEST_FOR_FINAL_COMMIT
 				|| msgType == PAXOS__ACCEPT_REQUEST_FOR_REPLICATE_LOG) {
-			LOGGER.info("Received " + msgType + " from shardID:"
-					+ messageFromOtherShard.getShardIdOfSender()
-					+ " | serverTransactionID:"
-					+ transaction.getServerTransactionId());
 			multiDatacenter.getCurrentShard().handlePaxosAccept(transaction,
 					msgType, messageFromOtherShard.getShardIdOfSender());
 		}
@@ -129,10 +117,6 @@ public class ShardNetworkWorker implements Runnable {
 		if (msgType == PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_COMMIT_PREPARE
 				|| msgType == PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_FINAL_COMMIT
 				|| msgType == PAXOS__ACCEPT_REQUEST_ACCEPTED_FOR_REPLICATE_LOG) {
-			LOGGER.info("Received " + msgType + " from shardID:"
-					+ messageFromOtherShard.getShardIdOfSender()
-					+ " | serverTransactionID:"
-					+ transaction.getServerTransactionId());
 			multiDatacenter.getCurrentShard()
 					.handlePaxosAcceptAcceptedOrDenied(transaction, msgType,
 							messageFromOtherShard.getShardIdOfSender(),
@@ -142,10 +126,6 @@ public class ShardNetworkWorker implements Runnable {
 		if (msgType == PAXOS__ACCEPT_REQUEST_DENIED_FOR_COMMIT_PREPARE
 				|| msgType == PAXOS__ACCEPT_REQUEST_DENIED_FOR_FINAL_COMMIT
 				|| msgType == PAXOS__ACCEPT_REQUEST_DENIED_FOR_REPLICATE_LOG) {
-			LOGGER.info("Received " + msgType + " from shardID:"
-					+ messageFromOtherShard.getShardIdOfSender()
-					+ " | serverTransactionID:"
-					+ transaction.getServerTransactionId());
 			multiDatacenter.getCurrentShard()
 					.handlePaxosAcceptAcceptedOrDenied(transaction, msgType,
 							messageFromOtherShard.getShardIdOfSender(),

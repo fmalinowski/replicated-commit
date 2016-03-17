@@ -336,13 +336,13 @@ public class ReplicatedCommit extends DB {
 	}
 	
 	public String getIpForShard(int datacenterID, int shardID) {
-		int indexOfShardInIpMap;
+		/*int indexOfShardInIpMap;
 		
 		indexOfShardInIpMap = datacenterID * this.getShardsPerDatacenter() + shardID;
 		if (this.ipMap.containsKey(indexOfShardInIpMap)) {
 			return this.ipMap.get(indexOfShardInIpMap);
-		}
-		return null;
+		}*/
+		return "128.111.43.14";
 	}
 	
 	public int getShardIdHoldingData(String key) {
