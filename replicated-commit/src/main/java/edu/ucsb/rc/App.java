@@ -10,6 +10,7 @@ import edu.ucsb.rc.network.NetworkHandler;
 public class App {
 	private final static Logger LOGGER = Logger.getLogger(App.class.getName()); 
 	private final static String configFilePath = "./config.properties";
+	private static boolean activateDatacenterLatencySimulation = false;
 	
     public static void main(String[] args) {
     	ConfigReader configReader;
@@ -19,6 +20,7 @@ public class App {
         
         // Provide command line parameter -DactivateLog=true to enable logging
         activateLoggingIfNeeded();
+        activateDatacenterLatencySimulationIfNeeded();
         
         configReader = new ConfigReader(configFilePath);
         shardListeningPort = configReader.getShardListeningPort();
@@ -49,5 +51,13 @@ public class App {
         	}
         	
         }
+    }
+    
+    public static void activateDatacenterLatencySimulationIfNeeded() {
+    	App.activateDatacenterLatencySimulation = Boolean.parseBoolean(System.getProperty("activateLatencySimu"));  
+    }
+    
+    public static boolean isDatacenterLatencySimulationOn() {
+    	return App.activateDatacenterLatencySimulation;
     }
 }
