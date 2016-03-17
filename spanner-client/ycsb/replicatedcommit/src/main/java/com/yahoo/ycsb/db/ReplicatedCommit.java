@@ -187,7 +187,7 @@ public class ReplicatedCommit extends DB {
 		currentTransaction.setWriteSet(currentWriteSet);
 		
 		message = new Message();
-		message.setMessageType(Message.MessageType.PAXOS__ACCEPT_REQUEST);
+		message.setMessageType(Message.MessageType.TWO_PHASE_COMMIT__PREPARE);
 		message.setTransaction(currentTransaction);
 		
 		coordinatorShardId = this.getCoordinatorShardID();
@@ -214,10 +214,10 @@ public class ReplicatedCommit extends DB {
 				}
 			} while (answerFromShard.getTransaction().getTransactionIdDefinedByClient() != this.transactionId);
 			
-			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED) {
+			if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT__SUCCESS) {
 				acceptedPaxosRequests++;
 			}
-			else if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED) {
+			else if (answerFromShard.getTransaction().getTransactionIdDefinedByClient() == this.transactionId && answerFromShard.getMessageType() == Message.MessageType.TWO_PHASE_COMMIT_FAILED) {
 					
 			} else {
 				// There's a big problem here cause we received a message not related to our request
@@ -334,13 +334,13 @@ public class ReplicatedCommit extends DB {
 	}
 	
 	public String getIpForShard(int datacenterID, int shardID) {
-		int indexOfShardInIpMap;
+		/*int indexOfShardInIpMap;
 		
 		indexOfShardInIpMap = datacenterID * this.getShardsPerDatacenter() + shardID;
 		if (this.ipMap.containsKey(indexOfShardInIpMap)) {
 			return this.ipMap.get(indexOfShardInIpMap);
-		}
-		return null;
+		}*/
+		return "128.111.43.14";
 	}
 	
 	public int getShardIdHoldingData(String key) {
