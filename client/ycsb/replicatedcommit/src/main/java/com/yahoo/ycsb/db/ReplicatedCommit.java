@@ -194,14 +194,14 @@ public class ReplicatedCommit extends DB {
 		
 		acceptedPaxosRequests = 0;
 		
-		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
-			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
+		//for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
+			//coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
 			
-			this.sendMessageToShard(message, coordinatorShardIp);
+			this.sendMessageToShard(message, "128.111.43.14");
 			LOGGER.info("------Commit sent message to shard "
-					+ coordinatorShardIp + " ---Transaction Id "
+					+ "128.111.43.14" + " ---Transaction Id "
 					+ transactionId);
-		}
+		//}
 		
 		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
 			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
@@ -334,13 +334,13 @@ public class ReplicatedCommit extends DB {
 	}
 	
 	public String getIpForShard(int datacenterID, int shardID) {
-		int indexOfShardInIpMap;
+		/*int indexOfShardInIpMap;
 		
 		indexOfShardInIpMap = datacenterID * this.getShardsPerDatacenter() + shardID;
 		if (this.ipMap.containsKey(indexOfShardInIpMap)) {
 			return this.ipMap.get(indexOfShardInIpMap);
-		}
-		return null;
+		}*/
+		return "128.111.43.14";
 	}
 	
 	public int getShardIdHoldingData(String key) {
@@ -384,8 +384,8 @@ public class ReplicatedCommit extends DB {
 		mostRecentTimestamp = 0;
 		bestReadOperationFromShards = null;
 		
-		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
-			shardIpAddress = this.getIpForShard(datacenterID, shardIdHoldingData);
+		//for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
+			shardIpAddress = "128.111.43.14";//this.getIpForShard(datacenterID, shardIdHoldingData);
 			
 			this.sendMessageToShard(message, shardIpAddress);
 			
@@ -421,7 +421,7 @@ public class ReplicatedCommit extends DB {
 						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType() + " | txnID received: " + answerFromShard.getTransaction().getTransactionIdDefinedByClient());
 				return null;
 			}
-		}
+		//}
 		
 		if (positiveReadAnswers >= this.acceptanceCriteria) {
 			return bestReadOperationFromShards;

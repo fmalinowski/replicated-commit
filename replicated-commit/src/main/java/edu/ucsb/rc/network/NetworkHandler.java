@@ -50,7 +50,7 @@ public class NetworkHandler implements NetworkHandlerInterface {
 	
 	public void sendMessageToShard(Shard shard, Message message) {
 		// Send a message to a shard
-		InetAddress shardAddress;
+		/*InetAddress shardAddress;
 		
 		try {
 			shardAddress = InetAddress.getByName(shard.getIpAddress());
@@ -62,7 +62,9 @@ public class NetworkHandler implements NetworkHandlerInterface {
 			this.socketForShards.send(sendPacket); // It's thread safe
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
+		}*/
+		
+		new Thread(new ShardNetworkWorker(message)).start();
 	}
 	
 	public void sendMessageToClient(Transaction transaction, Message message) {

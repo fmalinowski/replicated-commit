@@ -4,7 +4,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.util.logging.Logger;
 
-import edu.ucsb.rc.App;
 import edu.ucsb.rc.MultiDatacenter;
 import edu.ucsb.rc.model.Message;
 import edu.ucsb.rc.model.Transaction;
@@ -14,19 +13,27 @@ public class ShardNetworkWorker implements Runnable {
 	
 	private DatagramSocket serverSocket = null;
 	private DatagramPacket packet;
+	private Message messageFromOtherShard;
 	
 	public ShardNetworkWorker(DatagramSocket serverSocket, DatagramPacket packet) {
 		this.serverSocket = serverSocket;
 		this.packet = packet;
 	}
+	
+	public ShardNetworkWorker(Message messageFromOtherShard) {
+		this.messageFromOtherShard = messageFromOtherShard;
+	}
 
 	public void run() {
-		byte[] receivedBytes;
-		Message messageFromOtherShard;
-		
-		receivedBytes = this.packet.getData();
-		messageFromOtherShard = Message.deserialize(receivedBytes);
-		// We handle the message received from the other shard here
+
+		if (this.packet != null) {
+			byte[] receivedBytes;
+
+			receivedBytes = this.packet.getData();
+			messageFromOtherShard = Message.deserialize(receivedBytes);
+			// We handle the message received from the other shard here
+
+		}
 		  
 		MultiDatacenter multiDatacenter = MultiDatacenter.getInstance();
 		

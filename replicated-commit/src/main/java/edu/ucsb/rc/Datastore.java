@@ -25,14 +25,14 @@ public class Datastore {
 	}
 	
 	public void initialize() {
-		this.hbaseDao = new HBaseDAO();
+		/*this.hbaseDao = new HBaseDAO();
 		// We need to create the table here!
 		String[] columnFamilies = {this.columnFamily};
 		try {
 			this.hbaseDao.createTable(this.table, columnFamilies);
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
+		}*/
 	}
 
 	/*
@@ -45,11 +45,11 @@ public class Datastore {
 		
 		LOGGER.info("Reading key:" + key);
 		
-		try {
+		/*try {
 			return this.hbaseDao.getValuesOfOneRecord(this.table, key, this.columnFamily, columnValues);
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
+		}*/
 		return -1;
 	}
 	
@@ -60,10 +60,10 @@ public class Datastore {
 	public void write(String key, HashMap<String, String> columnValues) {
 		LOGGER.info("Writing to key:" + key);
 		
-		try {
+		/*try {
 			this.hbaseDao.addRecordWithSeveralQualifiers(this.table, key, this.columnFamily, columnValues);
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
+		}*/
 	}
 }

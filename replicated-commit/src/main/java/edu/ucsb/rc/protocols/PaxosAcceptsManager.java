@@ -16,7 +16,7 @@ public class PaxosAcceptsManager {
 	}
 	
 	public synchronized boolean increaseAcceptAccepted(Transaction t) {
-		String txnId = t.getServerTransactionId();
+		/*String txnId = t.getServerTransactionId();
 		int numberOfAccepts;
 		
 		if (!this.paxosAcceptAcceptedMap.containsKey(t.getServerTransactionId())) {
@@ -26,7 +26,8 @@ public class PaxosAcceptsManager {
 			numberOfAccepts = this.paxosAcceptAcceptedMap.get(txnId) + 1;
 		}
 		this.paxosAcceptAcceptedMap.put(txnId, numberOfAccepts);
-		return this.isPaxosAcceptAcceptedByMajority(t);
+		return this.isPaxosAcceptAcceptedByMajority(t);*/
+		return true;
 	}
 	
 	public synchronized int getAcceptAcceptedNumber(Transaction t) {
@@ -41,13 +42,14 @@ public class PaxosAcceptsManager {
 	}
 	
 	public synchronized boolean isPaxosAcceptAcceptedByMajority(Transaction t) {
-		int numberOfAccepts = this.getAcceptAcceptedNumber(t);
+		/*int numberOfAccepts = this.getAcceptAcceptedNumber(t);
 		int thresholdForMajority = (int) Math.ceil((double)this.datacentersNumber/2);
 		
 		if (numberOfAccepts >= thresholdForMajority) {
 			return true;
 		}
-		return false;
+		return false;*/
+		return true;
 	}
 	
 	public synchronized void removeTrackOfPaxosAccepts(Transaction t) {

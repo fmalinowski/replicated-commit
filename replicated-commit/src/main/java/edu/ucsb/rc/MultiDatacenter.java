@@ -79,6 +79,7 @@ public class MultiDatacenter {
 	}
 	
 	public ArrayList<Shard> getOtherShardsWithId(int shardID) {
+		
 		ArrayList<Shard> allShards = new ArrayList<Shard>();
 		
 		Collection<Datacenter> allDatacenters = this.datacenters.values();

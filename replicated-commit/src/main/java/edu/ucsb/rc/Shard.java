@@ -12,6 +12,7 @@ import edu.ucsb.rc.model.Operation;
 import edu.ucsb.rc.model.Transaction;
 import edu.ucsb.rc.network.NetworkHandler;
 import edu.ucsb.rc.network.NetworkHandlerInterface;
+import edu.ucsb.rc.network.ShardNetworkWorker;
 import edu.ucsb.rc.protocols.PaxosAcceptsManager;
 import edu.ucsb.rc.protocols.TwoPhaseCommitManager;
 
@@ -118,9 +119,9 @@ public class Shard {
 		this.twoPCmanager.startTracking2PCaccepts(t);
 		
 		ArrayList<Shard> datacenterShards = this.datacenter.getShards();
-		for (Shard datacenterShard : datacenterShards) {
-			networkHandler.sendMessageToShard(datacenterShard, messageForShards);
-		}
+		//for (Shard datacenterShard : datacenterShards) {
+			networkHandler.sendMessageToShard(this, messageForShards);
+		//}
 	}
 	
 	public void handleTwoPhaseCommitPrepare(Transaction t, int shardIdOfSender) {
@@ -159,9 +160,9 @@ public class Shard {
 			boolean reachedMajorityPaxosAccepts = this.paxosAcceptsManager.increaseAcceptAccepted(t);
 			
 			ArrayList<Shard> coordinatorsInOtherDCs = MultiDatacenter.getInstance().getOtherShardsWithId(this.shardID);
-			for (Shard otherCoordinator : coordinatorsInOtherDCs) {
-				this.sendMessageToOtherShard(otherCoordinator, Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED, t);
-			}
+			//for (Shard otherCoordinator : coordinatorsInOtherDCs) {
+				this.sendMessageToOtherShard(this, Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED, t);
+			//}
 			
 			this.sendMessageToClient(Message.MessageType.PAXOS__ACCEPT_REQUEST_ACCEPTED, t);
 			
@@ -178,9 +179,9 @@ public class Shard {
 		
 		// Is that necessary? Protocol doesn't mention that but could be helpful to release some memory
 		ArrayList<Shard> coordinatorsInOtherDCs = MultiDatacenter.getInstance().getOtherShardsWithId(this.shardID);
-		for (Shard otherCoordinator : coordinatorsInOtherDCs) {
-			this.sendMessageToOtherShard(otherCoordinator, Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED, t);
-		}
+		//for (Shard otherCoordinator : coordinatorsInOtherDCs) {
+			this.sendMessageToOtherShard(this, Message.MessageType.PAXOS__ACCEPT_REQUEST_DENIED, t);
+		//}
 	}
 	
 	public void handlePaxosAcceptRequestAccepted(Transaction t, int shardIdOfSender) {
@@ -198,10 +199,10 @@ public class Shard {
 		// We no longer need to track number of accepts
 		this.paxosAcceptsManager.removeTrackOfPaxosAccepts(t);
 		
-		ArrayList<Shard> shardsInDatacenter = this.datacenter.getShards();
-		for (Shard cohortShard : shardsInDatacenter) {
-			this.sendMessageToOtherShard(cohortShard, Message.MessageType.TWO_PHASE_COMMIT__COMMIT, t);
-		}
+		//ArrayList<Shard> shardsInDatacenter = this.datacenter.getShards();
+		//for (Shard cohortShard : shardsInDatacenter) {
+			this.sendMessageToOtherShard(this, Message.MessageType.TWO_PHASE_COMMIT__COMMIT, t);
+		//}
 	}
 	
 	public void handleTwoPhaseCommitCommit(Transaction t, int shardIdOfSender) {
@@ -231,12 +232,14 @@ public class Shard {
 		
 		LOGGER.info("Send the messageType:" + messageType + " to shardID:" + shard.getShardID() + " of datacenterID:" + shard.getDatacenter().getDatacenterID() + " | serverTransactionID:" + t.getServerTransactionId());
 		
-		if (App.isDatacenterLatencySimulationOn() && !this.datacenter.getShards().contains(shard)) {
+		/*if (App.isDatacenterLatencySimulationOn() && !this.datacenter.getShards().contains(shard)) {
 			simulateLatencyBetweenDatacenters();
 		}
+		*/
+		//NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
+		//networkHandler.sendMessageToShard(shard, messageForShardSender);
 		
-		NetworkHandlerInterface networkHandler = MultiDatacenter.getInstance().getNetworkHandler();
-		networkHandler.sendMessageToShard(shard, messageForShardSender);
+		new Thread(new ShardNetworkWorker(messageForShardSender)).start();
 	}
 	
 	private void sendMessageToClient(Message.MessageType messageType, Transaction t) {

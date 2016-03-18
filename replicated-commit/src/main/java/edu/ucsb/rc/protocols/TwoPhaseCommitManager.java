@@ -37,11 +37,12 @@ public class TwoPhaseCommitManager {
 	}
 	
 	public synchronized boolean is2PCRequestAcceptedByEverybody(Transaction t) {
-		if (!this.twoPCacceptedRequestsMap.containsKey(t.getServerTransactionId())) {
+		/*if (!this.twoPCacceptedRequestsMap.containsKey(t.getServerTransactionId())) {
 			return false;
 		}
 		int numberOfAcceptations = this.twoPCacceptedRequestsMap.get(t.getServerTransactionId());
 		
-		return (numberOfAcceptations >= this.shardsNumberPerDatacenter) ? true : false;
+		return (numberOfAcceptations >= this.shardsNumberPerDatacenter) ? true : false;*/
+		return true;
 	}
 }
