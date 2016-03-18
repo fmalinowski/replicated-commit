@@ -16,6 +16,9 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import com.yahoo.ycsb.*;
@@ -66,25 +69,25 @@ public class ReplicatedCommit extends DB {
 			e.printStackTrace();
 		}
 
-		LOGGER.info("------Init method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+//		LOGGER.info("------Init method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId);
 
 	}
 
 	@Override
 	public void cleanup() throws DBException {
-		LOGGER.info("------CleanUp method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+//		LOGGER.info("------CleanUp method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId);
 	}
 
 	@Override
 	public void start() throws DBException {
 		transactionId++;
-		LOGGER.info("------Start method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+//		LOGGER.info("------Start method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId);
 		currentTransaction = new Transaction();
 		currentTransaction.setTransactionIdDefinedByClient(transactionId);
 		
@@ -98,9 +101,9 @@ public class ReplicatedCommit extends DB {
 	public Status read(String table, String key, Set<String> fields,
 			HashMap<String, ByteIterator> result) {
 
-		LOGGER.info("------Read method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+//		LOGGER.info("------Read method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId);
 
 		Operation readOperationAnswerFromServer;
 		
@@ -137,9 +140,9 @@ public class ReplicatedCommit extends DB {
 	public Status update(String table, String key,
 			HashMap<String, ByteIterator> values) {
 
-		LOGGER.info("------Update method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+//		LOGGER.info("------Update method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId);
 
 		Operation writeOperation = new Operation();
 		HashMap<String, String> columnValues = new HashMap<String, String>();
@@ -157,9 +160,9 @@ public class ReplicatedCommit extends DB {
 	public Status insert(String table, String key,
 			HashMap<String, ByteIterator> values) {
 
-		LOGGER.info("------Insert method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+//		LOGGER.info("------Insert method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId);
 
 		Operation writeOperation = new Operation();
 		HashMap<String, String> columnValues = new HashMap<String, String>();
@@ -198,9 +201,9 @@ public class ReplicatedCommit extends DB {
 			coordinatorShardIp = this.getIpForShard(datacenterID, coordinatorShardId);
 			
 			this.sendMessageToShard(message, coordinatorShardIp);
-			LOGGER.info("------Commit sent message to shard "
-					+ coordinatorShardIp + " ---Transaction Id "
-					+ transactionId);
+//			LOGGER.info("------Commit sent message to shard "
+//					+ coordinatorShardIp + " ---Transaction Id "
+//					+ transactionId);
 		}
 		
 		for (int datacenterID = 0; datacenterID < this.datacentersNumber; datacenterID++) {
@@ -222,10 +225,10 @@ public class ReplicatedCommit extends DB {
 			} else {
 				// There's a big problem here cause we received a message not related to our request
 				// Might be due response to another request...
-				LOGGER.info("------Commit method---Thread"
-						+ Thread.currentThread().getId() + " ---Transaction Id "
-						+ transactionId
-						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType() + " | txnID received: " + answerFromShard.getTransaction().getTransactionIdDefinedByClient());
+//				LOGGER.info("------Commit method---Thread"
+//						+ Thread.currentThread().getId() + " ---Transaction Id "
+//						+ transactionId
+//						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType() + " | txnID received: " + answerFromShard.getTransaction().getTransactionIdDefinedByClient());
 				return;
 			}
 		}
@@ -241,24 +244,26 @@ public class ReplicatedCommit extends DB {
 			logString = "Txn Aborted";
 		}
 		
-		LOGGER.info("------Commit method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId + "Current Write Set " + currentWriteSet.size()
-				+ " - " + logString);
+//		LOGGER.info("------Commit method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId + "Current Write Set " + currentWriteSet.size()
+//				+ " - " + logString);
 
 		double commitsPercentage = (double)this.commitedTransactions / (this.abortedTransactions + this.commitedTransactions) * 100;
-		LOGGER.info("++++ Summary ++++" 
-				+ "Commits: " + this.commitedTransactions
-				+ "Aborts: " + this.abortedTransactions
-				+ "commits %: " + commitsPercentage);
+		LOGGER.info("++++ Summary ++++"
+				+ " Thread:"
+				+ Thread.currentThread().getId()
+				+ " Commits:" + this.commitedTransactions
+				+ " Aborts:" + this.abortedTransactions
+				+ " commits %:" + commitsPercentage);
 	}
 
 	@Override
 	public void abort() throws DBException {
 
-		LOGGER.info("------Abort method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+//		LOGGER.info("------Abort method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId);
 
 	}
 
@@ -266,18 +271,18 @@ public class ReplicatedCommit extends DB {
 	public Status scan(String table, String startkey, int recordcount,
 			Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
 
-		LOGGER.info("------Scan method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+//		LOGGER.info("------Scan method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId);
 		return NOT_IMPLEMENTED;
 	}
 
 	@Override
 	public Status delete(String table, String key) {
 
-		LOGGER.info("------Delete method---Thread"
-				+ Thread.currentThread().getId() + " ---Transaction Id "
-				+ transactionId);
+//		LOGGER.info("------Delete method---Thread"
+//				+ Thread.currentThread().getId() + " ---Transaction Id "
+//				+ transactionId);
 		return NOT_IMPLEMENTED;
 	}
 	
@@ -415,10 +420,10 @@ public class ReplicatedCommit extends DB {
 			} else {
 				// Invalid response from server (we screwed up when listening to messages)
 				// That's bad!!!!
-				LOGGER.info("------sendReadRequestToShards---Thread"
-						+ Thread.currentThread().getId() + " ---Transaction Id "
-						+ transactionId
-						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType() + " | txnID received: " + answerFromShard.getTransaction().getTransactionIdDefinedByClient());
+//				LOGGER.info("------sendReadRequestToShards---Thread"
+//						+ Thread.currentThread().getId() + " ---Transaction Id "
+//						+ transactionId
+//						+ " --- GOT WRONG MESSAGE - PROBLEM! -- We got this type of message:" + answerFromShard.getMessageType() + " | txnID received: " + answerFromShard.getTransaction().getTransactionIdDefinedByClient());
 				return null;
 			}
 		}
@@ -460,7 +465,7 @@ public class ReplicatedCommit extends DB {
 			byte[] receivedBytes;
 			Message messageFromShard;
 			receivedBytes = packet.getData();
-			LOGGER.info("receive packet from :" + packet.getAddress() + " | sizeOfPacket:" + packet.getLength());
+//			LOGGER.info("receive packet from :" + packet.getAddress() + " | sizeOfPacket:" + packet.getLength());
 			messageFromShard = Message.deserialize(receivedBytes);
 			return messageFromShard;
 		} catch (SocketTimeoutException e) {

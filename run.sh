@@ -14,5 +14,5 @@ do
 	# $(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'export JAVA_HOME=/opt/jdk1.7.0_79; echo "disable \"usertable\"" | ./hbase-1.0.3/bin/hbase shell;')
 	# $(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'export JAVA_HOME=/opt/jdk1.7.0_79; echo "drop \"usertable\"" | ./hbase-1.0.3/bin/hbase shell;')
 	# $(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'export JAVA_HOME=/opt/jdk1.7.0_79; echo "create \"usertable\", \"cf\"" | ./hbase-1.0.3/bin/hbase shell;')
-	$(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'export JAVA_HOME=/opt/jdk1.7.0_79; export PATH=$PATH:/opt/jdk1.7.0_79/bin:/opt/jdk1.7.0_79/jre/bin; export JRE_HOME=/opt/jdk1.7.0_79/jre; nohup java -DactivateLog=true -DactivateLatencySimu=true -cp replicated-commit.jar edu.ucsb.rc.App > my.log 2>&1& echo $! > save_pid.txt;')
+	$(ssh -o "StrictHostKeyChecking no" -i ${currentPEMfileLocation} root@${server} 'export JAVA_HOME=/opt/jdk1.7.0_79; export PATH=$PATH:/opt/jdk1.7.0_79/bin:/opt/jdk1.7.0_79/jre/bin; export JRE_HOME=/opt/jdk1.7.0_79/jre; nohup java -DactivateLog=false -DactivateLatencySimu=true -cp replicated-commit.jar edu.ucsb.rc.App > my.log 2>&1& echo $! > save_pid.txt;')
 done
